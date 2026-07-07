@@ -291,7 +291,8 @@
           <div class="view" id="s_explain_input">
             <div class="appbar"><span class="back" onclick="go('seniorScreen','s_home')">‹</span><h2>帮我问问</h2></div>
             <div class="pad" style="padding-top:0;">
-              <p style="font-size:17px;color:var(--navy);font-weight:600;text-align:center;margin:6px 0 14px;">看不懂的东西，拍给管家，帮你翻译成大白话</p>
+              <p style="font-size:17px;color:var(--navy);font-weight:600;text-align:center;margin:6px 0 16px;">看不懂的东西，选一种方式告诉管家</p>
+              <p class="muted" style="margin:0 0 8px;font-weight:600;color:var(--navy);">方式一：拍照</p>
               <button class="btn mic-btn" style="background:#eaf7ef;color:var(--green);border-color:#bfe6cf;margin-bottom:12px;" onclick="document.getElementById('explainImgInput').click()">
                 <span class="mi">📷</span><span>拍照 / 传图片</span></button>
               <input id="explainImgInput" type="file" accept="image/*" capture="environment" style="display:none" onchange="handleExplainImage(this.files[0])">
@@ -299,10 +300,12 @@
                 <img id="explainPreviewImg" style="max-width:100%;max-height:180px;border-radius:12px;border:1px solid var(--line);">
                 <p class="muted" style="margin:4px 0 0;">已拍到，点下面按钮让管家看</p>
               </div>
+              <p class="muted" style="margin:4px 0 8px;font-weight:600;color:var(--navy);">方式二：语音转文字</p>
               <button id="explainMicBtn" class="btn mic-btn" onclick="toggleExplainMic()">
-                <span class="mi">🎤</span><span id="explainMicLabel">或者说一下：这是什么</span></button>
-              <textarea id="explain_input" rows="2" style="width:100%;border:1px solid var(--line);border-radius:14px;padding:12px;font-size:16px;font-family:inherit;resize:none;margin-top:10px;" placeholder="补充说明（可不填）：比如'这个短信什么意思'"></textarea>
-              <button class="btn btn-primary" style="margin-top:12px;" onclick="askExplain()">让管家帮我看看</button>
+                <span class="mi">🎤</span><span id="explainMicLabel">按住说话，念给管家听</span></button>
+              <p class="muted" style="margin:12px 0 8px;font-weight:600;color:var(--navy);">方式三：文字输入</p>
+              <textarea id="explain_input" rows="3" style="width:100%;border:1px solid var(--line);border-radius:14px;padding:12px;font-size:16px;font-family:inherit;resize:none;" placeholder="把看不懂的内容贴进来，或手动打字描述"></textarea>
+              <button class="btn btn-primary" style="margin-top:14px;" onclick="askExplain()">让管家帮我看看</button>
               <p class="muted" style="text-align:center;margin:10px 0 0;">通知、账单、医院单子、政策文件…什么都能问</p>
             </div>
           </div>
