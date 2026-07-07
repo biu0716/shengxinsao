@@ -1,0 +1,16 @@
+# Render 蓝图：在 Render 里 New → Blueprint，选中包含本文件的仓库即可自动建服务。
+# 部署后记得在服务的 Environment 里补上 LLM_API_KEY（密钥不写进仓库）。
+services:
+  - type: web
+    name: shengxinsao
+    runtime: node
+    plan: free
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    envVars:
+      - key: LLM_URL
+        value: https://api.deepseek.com/chat/completions
+      - key: LLM_MODEL
+        value: deepseek-chat
+      - key: LLM_API_KEY
+        sync: false   # 在 Render 后台手动填写，不进仓库

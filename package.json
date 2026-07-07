@@ -1,0 +1,12 @@
+{
+  "name": "shengxinsao",
+  "version": "0.1.0",
+  "description": "省心扫 - 老人的数字世界代办管家（防骗核验 + 点餐翻译 + 语音）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

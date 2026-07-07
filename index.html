@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>省心扫</title>
+<style>
+  :root{--navy:#1F3864;--blue:#2E5496;--accent:#2f8fe0;
+    --green:#2fae66;--amber:#f0a326;--red:#e0553f;
+    --ink:#1f2733;--mut:#7b8698;--line:#e6eaf0;--bg:#eef1f6;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Arial,sans-serif;
+       background:#0d1420;color:var(--ink);}
+  /* 应用容器：手机上铺满，桌面上居中成一块竖屏 */
+  #app{position:relative;width:100%;max-width:480px;height:100dvh;margin:0 auto;
+       background:var(--bg);overflow:hidden;box-shadow:0 0 40px rgba(0,0,0,.35);}
+  .screen{position:absolute;inset:0;background:var(--bg);display:none;}
+  .screen.on{display:block;}
+  .statusbar{height:44px;display:flex;align-items:center;justify-content:space-between;
+       padding:0 22px;font-size:13px;color:var(--ink);font-weight:600;padding-top:env(safe-area-inset-top);}
+  .view{position:absolute;inset:44px 0 0 0;overflow-y:auto;display:none;-webkit-overflow-scrolling:touch;}
+  .view.active{display:block;}
+  .view::-webkit-scrollbar{width:0;}
+  /* 身份选择入口 */
+  .entry{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;
+       align-items:center;padding:32px;background:linear-gradient(165deg,#24406f,#2e5496);color:#fff;text-align:center;}
+  .entry.on{display:flex;}
+  .entry .logo{font-size:44px;font-weight:900;letter-spacing:3px;}
+  .entry .slogan{font-size:15px;opacity:.9;margin:10px 0 40px;line-height:1.7;}
+  .entry .role{width:100%;max-width:320px;background:#fff;color:var(--navy);border:none;border-radius:18px;
+       padding:22px;margin-bottom:16px;font-size:20px;font-weight:800;cursor:pointer;display:flex;
+       align-items:center;gap:14px;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,.15);}
+  .entry .role .e{font-size:30px;}
+  .entry .role small{display:block;font-size:13px;font-weight:400;color:var(--mut);margin-top:3px;}
+  .entry .foot{font-size:12px;opacity:.7;margin-top:20px;}
+  /* 切换身份浮标 */
+  .roleswitch{position:absolute;top:9px;left:14px;z-index:6;font-size:12px;color:var(--blue);
+       background:rgba(255,255,255,.8);border-radius:10px;padding:3px 9px;cursor:pointer;}
+  .child .roleswitch{color:#fff;background:rgba(255,255,255,.22);}
+  .pad{padding:16px;}
+  .appbar{display:flex;align-items:center;gap:10px;padding:6px 16px 12px;}
+  .appbar .back{font-size:22px;color:var(--blue);cursor:pointer;width:24px;}
+  .appbar h2{font-size:18px;margin:0;}
+  .card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(30,56,100,.06);margin-bottom:14px;}
+  .btn{display:block;width:100%;border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-ghost{background:#eef2f8;color:var(--blue);}
+  .btn-danger{background:var(--red);color:#fff;}
+  .btn-ok{background:var(--green);color:#fff;}
+  .muted{color:var(--mut);font-size:13px;}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+  .pill.g{background:#e4f6ec;color:var(--green);}.pill.a{background:#fdf1de;color:#b9791a;}.pill.r{background:#fbe6e2;color:var(--red);}
+
+  /* 老人端 */
+  .senior{background:#fbfcfe;}
+  .s-head{padding:20px 20px 6px;}
+  .s-hi{font-size:22px;font-weight:800;color:var(--navy);}
+  .s-date{color:var(--mut);font-size:15px;margin-top:2px;}
+  .big-btn{margin:16px;background:linear-gradient(145deg,#2e5496,#3b74c9);border-radius:26px;color:#fff;
+       text-align:center;padding:30px 20px;cursor:pointer;box-shadow:0 12px 26px rgba(46,84,150,.35);}
+  .big-btn .cam{font-size:56px;line-height:1;}
+  .big-btn .t{font-size:26px;font-weight:800;margin-top:10px;letter-spacing:1px;}
+  .big-btn .sub{font-size:15px;opacity:.9;margin-top:5px;}
+  .s-row{display:flex;align-items:center;gap:14px;background:#fff;margin:0 16px 12px;padding:18px;
+       border-radius:20px;box-shadow:0 2px 10px rgba(30,56,100,.06);cursor:pointer;}
+  .s-row .ic{font-size:30px;}.s-row .tx{font-size:18px;font-weight:600;}
+  .s-row .tx small{display:block;font-size:14px;color:var(--mut);font-weight:400;margin-top:2px;}
+  .chatbubble{background:#eaf2fb;border-radius:16px;padding:14px 16px;margin:0 16px 14px;
+       font-size:17px;color:var(--navy);font-weight:600;display:none;}
+  .chatbubble.show{display:block;animation:pop .4s;}
+  @keyframes pop{from{transform:scale(.9);opacity:0;}to{transform:scale(1);opacity:1;}}
+  /* 扫码取景 */
+  .scanbox{margin:40px auto;width:210px;height:210px;border-radius:24px;position:relative;
+       background:linear-gradient(135deg,#2a2f38,#0d1013);overflow:hidden;}
+  .scanbox .qr{position:absolute;inset:34px;background:
+       repeating-linear-gradient(90deg,#fff 0 8px,#111 8px 16px),
+       repeating-linear-gradient(0deg,#fff 0 8px,transparent 8px 16px);opacity:.9;border-radius:8px;}
+  .scanbox .laser{position:absolute;left:12px;right:12px;height:3px;background:#4fd07a;
+       box-shadow:0 0 12px #4fd07a;animation:scan 1.4s infinite;}
+  @keyframes scan{0%{top:20px;}50%{top:186px;}100%{top:20px;}}
+  /* 点餐极简菜单 */
+  .menu-item{display:flex;align-items:center;gap:12px;background:#fff;border-radius:16px;padding:14px;
+       margin:0 16px 12px;box-shadow:0 2px 10px rgba(30,56,100,.06);}
+  .menu-item .mi-ic{font-size:34px;}
+  .menu-item .mi-tx{flex:1;font-size:19px;font-weight:700;}
+  .menu-item .mi-tx small{display:block;font-size:15px;color:var(--mut);font-weight:500;}
+  .stepper{display:flex;align-items:center;gap:12px;}
+  .stepper button{width:38px;height:38px;border-radius:50%;border:none;font-size:22px;font-weight:800;
+       background:var(--blue);color:#fff;cursor:pointer;line-height:1;}
+  .stepper .qty{font-size:20px;font-weight:800;min-width:20px;text-align:center;}
+  /* 缴费确认大字 */
+  .pay-hero{text-align:center;padding:30px 20px 6px;}
+  .pay-hero .amt{font-size:54px;font-weight:900;color:var(--navy);}
+  .pay-hero .lbl{font-size:22px;color:var(--ink);margin-top:6px;}
+  /* 防骗警告 */
+  .fraud{background:linear-gradient(160deg,#fbe6e2,#fff);}
+  .fraud-hero{text-align:center;padding:34px 22px 8px;}
+  .fraud-hero .warn{width:110px;height:110px;border-radius:50%;margin:0 auto 16px;background:var(--red);
+       display:flex;align-items:center;justify-content:center;font-size:56px;color:#fff;box-shadow:0 0 0 10px #fbe6e2;}
+  .fraud-hero .t{font-size:26px;font-weight:900;color:var(--red);line-height:1.4;}
+  .voice{display:flex;align-items:center;gap:10px;background:#fff;margin:16px;padding:14px 16px;
+       border-radius:16px;color:var(--navy);font-size:17px;font-weight:600;border:1px solid var(--line);}
+  .voice .ic{font-size:22px;}
+
+  /* 子女端 */
+  .child{background:var(--bg);}
+  .c-head{background:linear-gradient(150deg,#24406f,#2e5496);color:#fff;padding:16px 18px 20px;}
+  .c-head .top{display:flex;justify-content:space-between;align-items:center;font-size:13px;opacity:.85;}
+  .c-head h2{margin:10px 0 2px;font-size:21px;}
+  .sec-title{font-size:13px;color:var(--mut);font-weight:700;margin:16px 4px 8px;letter-spacing:.5px;}
+  .verify-alert{display:flex;gap:10px;background:#fdeee9;border:1px solid #f3b6a8;border-radius:14px;
+       padding:14px;margin-bottom:12px;align-items:flex-start;cursor:pointer;}
+  .verify-alert .ic{font-size:22px;}.verify-alert b{color:var(--red);font-size:15px;}
+  .verify-alert div small{display:block;font-size:12.5px;color:#8a4433;margin-top:2px;}
+  .rec{display:flex;gap:12px;background:#fff;border-radius:14px;padding:12px;margin-bottom:10px;
+       box-shadow:0 2px 10px rgba(30,56,100,.06);align-items:center;}
+  .rec .ic{font-size:24px;width:30px;text-align:center;}
+  .rec .info{flex:1;}.rec .info b{font-size:15px;}.rec .info div{font-size:12.5px;color:var(--mut);margin-top:2px;}
+  .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;}
+  .kv:last-child{border:none;} .kv .k{color:var(--mut);} .kv .v{font-weight:700;}
+  .risk{background:#fbe6e2;border-radius:10px;padding:10px 12px;color:#8a4433;font-size:13px;margin-top:10px;}
+
+  .toast{position:absolute;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+       background:rgba(31,39,51,.94);color:#fff;padding:12px 18px;border-radius:14px;font-size:14px;
+       opacity:0;transition:.35s;pointer-events:none;max-width:82%;text-align:center;z-index:30;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  /* 演示选择弹层 */
+  .sheet{position:absolute;inset:0;background:rgba(0,0,0,.4);display:none;z-index:40;}
+  .sheet.show{display:block;}
+  .sheet-inner{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:18px 16px 22px;}
+  .sheet-inner h4{margin:2px 0 4px;font-size:16px;text-align:center;}
+  .sheet-inner .demo{text-align:center;color:var(--mut);font-size:12px;margin-bottom:14px;}
+  .sheet-opt{display:flex;align-items:center;gap:12px;padding:15px;border:1px solid var(--line);border-radius:14px;margin-bottom:10px;cursor:pointer;font-size:16px;font-weight:600;}
+  .sheet-opt .e{font-size:26px;}
+  .hint{text-align:center;color:var(--mut);font-size:12.5px;margin-top:22px;line-height:1.8;}
+  .mic-btn{background:#eef4fb;color:var(--blue);display:flex;align-items:center;justify-content:center;
+       gap:10px;font-size:19px;padding:20px;border-radius:16px;border:2px solid #d6e4f5;}
+  .mic-btn .mi{font-size:30px;}
+  .mic-btn.listening{background:#fbe6e2;color:var(--red);border-color:#f3b6a8;animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(224,85,63,.4);}70%{box-shadow:0 0 0 14px rgba(224,85,63,0);}100%{box-shadow:0 0 0 0 rgba(224,85,63,0);}}
+  .speaker{cursor:pointer;}
+  .tts-toggle{position:absolute;top:9px;right:14px;font-size:12px;color:var(--mut);cursor:pointer;z-index:6;background:rgba(255,255,255,.8);border-radius:10px;padding:3px 9px;}
+  /* 提醒 */
+  .rem-row{display:flex;align-items:center;gap:14px;background:#fff;margin:0 16px 12px;padding:16px 18px;border-radius:18px;box-shadow:0 2px 10px rgba(30,56,100,.06);}
+  .rem-row.done{opacity:.6;}
+  .rem-row .ic{font-size:28px;}
+  .rem-row .tx{font-size:18px;font-weight:700;flex:1;}
+  .rem-row .tx small{display:block;font-size:14px;color:var(--mut);font-weight:400;margin-top:2px;}
+  .remind-alert{position:absolute;inset:0;z-index:50;background:linear-gradient(165deg,#2e5496,#24406f);color:#fff;display:none;flex-direction:column;justify-content:center;align-items:center;padding:34px;text-align:center;}
+  .remind-alert.on{display:flex;}
+  .remind-alert .rico{font-size:84px;line-height:1;}
+  .remind-alert .rt{font-size:34px;font-weight:900;margin:18px 0 6px;}
+  .remind-alert .rsub{font-size:19px;opacity:.92;}
+  .remind-alert .big-done{background:#fff;color:var(--green);font-size:23px;font-weight:800;border:none;border-radius:18px;padding:20px;width:100%;max-width:320px;margin-top:44px;cursor:pointer;}
+  .remind-alert .snooze{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:14px;padding:13px;width:100%;max-width:320px;margin-top:14px;font-size:16px;cursor:pointer;}
+  .crem{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:11px 12px;margin-bottom:8px;box-shadow:0 2px 10px rgba(30,56,100,.06);}
+  .crem .ic{font-size:20px;}
+  .crem .info{flex:1;font-size:14px;font-weight:600;}
+  .crem .info small{display:block;color:var(--mut);font-weight:400;font-size:12px;}
+  .crem .st{font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap;}
+  .fld{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:15px;font-family:inherit;margin-top:6px;}
+  /* 防骗战绩 */
+  .stat-card{background:linear-gradient(135deg,#e0553f,#b3311f);color:#fff;border-radius:18px;padding:15px 18px;margin-bottom:14px;cursor:pointer;box-shadow:0 8px 20px rgba(224,85,63,.32);}
+  .stat-card .h{font-size:13px;opacity:.92;display:flex;justify-content:space-between;}
+  .stat-card .big{margin-top:9px;display:flex;gap:22px;font-size:14px;}
+  .stat-card .big b{font-size:27px;font-weight:900;}
+  .poster{margin:0 auto;max-width:330px;background:linear-gradient(165deg,#2a2f5a 0%,#5b3a7a 55%,#e0553f 100%);
+       border-radius:22px;color:#fff;padding:26px 22px;text-align:center;box-shadow:0 14px 34px rgba(0,0,0,.3);}
+  .poster .shield{font-size:56px;line-height:1;}
+  .poster .ttl{font-size:21px;font-weight:900;margin:8px 0 2px;}
+  .poster .who{font-size:13.5px;opacity:.9;}
+  .poster .nums{display:flex;justify-content:center;gap:28px;margin:20px 0;}
+  .poster .num b{font-size:34px;font-weight:900;display:block;line-height:1.1;}
+  .poster .num small{font-size:12px;opacity:.9;}
+  .poster .list{background:rgba(255,255,255,.14);border-radius:12px;padding:12px 14px;text-align:left;font-size:12.5px;}
+  .poster .list div{margin:5px 0;display:flex;justify-content:space-between;gap:8px;}
+  .poster .foot{margin-top:16px;font-size:11.5px;opacity:.85;line-height:1.6;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 身份选择入口 -->
+  <div class="entry on" id="entry">
+    <div class="logo">省心扫</div>
+    <div class="slogan">老人的数字世界代办管家<br>防骗 · 缴费 · 点餐，开口说 / 扫一下就行</div>
+    <button class="role" onclick="chooseRole('senior')"><span class="e">👴</span><span>我是长辈<small>拍照 / 说话，帮我办事、防骗</small></span></button>
+    <button class="role" onclick="chooseRole('child')"><span class="e">👨‍👩‍👧</span><span>我是子女<small>远程守护、兜底核验</small></span></button>
+    <div class="foot">演示版 · 进去后可随时切换身份</div>
+  </div>
+
+        <div class="screen senior" id="seniorScreen">
+          <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+          <div class="roleswitch" onclick="backToEntry()">‹ 切换身份</div>
+          <div class="tts-toggle" id="ttsToggle" onclick="toggleTTS()">🔊 语音播报：开</div>
+
+          <!-- 首页 -->
+          <div class="view active" id="s_home">
+            <div class="s-head"><div class="s-hi">王大爷，您好 👋</div><div class="s-date">7月6日 星期一</div></div>
+            <div class="chatbubble" id="s_care"></div>
+            <div class="big-btn" onclick="sheet(true)">
+              <div class="cam">📷</div><div class="t">扫一扫 / 说一句</div>
+              <div class="sub">要办什么，扫一下就行</div>
+            </div>
+            <div id="s_reminders"></div>
+            <div class="s-row" onclick="go('seniorScreen','s_explain_input')">
+              <div class="ic">❓</div>
+              <div class="tx">帮我问问<small>看不懂的通知/账单，拍给管家翻译</small></div>
+              <span class="pill a" style="margin-left:auto">问</span>
+            </div>
+            <div class="s-row" onclick="go('seniorScreen','s_pay')">
+              <div class="ic">💡</div>
+              <div class="tx">本月电费<small>86 元 · 待缴</small></div>
+              <span class="pill a" style="margin-left:auto">去交</span>
+            </div>
+            <div class="s-row" onclick="toast('seniorScreen','有事我随时喊女儿帮忙')">
+              <div class="ic">👨‍👩‍👧</div>
+              <div class="tx">女儿在守护<small>办大事她会帮你把关</small></div>
+            </div>
+          </div>
+
+          <!-- 扫码取景 -->
+          <div class="view" id="s_scan">
+            <div class="scanbox"><div class="qr"></div><div class="laser"></div></div>
+            <p style="text-align:center;font-size:18px;color:var(--navy);font-weight:700;">正在识别…</p>
+          </div>
+
+          <!-- 点餐翻译（极简菜单，不碰支付） -->
+          <div class="view" id="s_menu">
+            <div class="appbar"><span class="back" onclick="go('seniorScreen','s_home')">‹</span><h2 id="s_menu_shop">点菜</h2></div>
+            <p class="muted" style="margin:0 16px 10px;">🤖 管家已帮您把菜单变简单，点"+"就行 🔊</p>
+            <div id="s_menu_list"></div>
+            <div class="card" id="s_menu_rec" style="margin:0 16px 12px;background:#eaf2fb;color:var(--navy);font-weight:600;"></div>
+            <div class="pad" style="padding-top:4px;">
+              <button class="btn btn-primary" onclick="order()">下单（去微信付款）</button>
+              <p class="muted" style="text-align:center;margin:10px 0 0;">付款走饭馆自己的微信，我们不碰您的钱</p>
+            </div>
+          </div>
+
+          <!-- 缴费确认 -->
+          <div class="view" id="s_pay">
+            <div class="appbar"><span class="back" onclick="go('seniorScreen','s_home')">‹</span><h2>交电费</h2></div>
+            <div class="pay-hero"><div class="amt">86<span style="font-size:24px;">元</span></div>
+              <div class="lbl">7月电费 · 国家电网</div></div>
+            <div class="pad">
+              <div class="card muted">户号 3301****2688（女儿已绑好）<br>金额在您的自主额度内，可直接交</div>
+              <button class="btn btn-primary" onclick="seniorPay()">确认交费</button>
+            </div>
+          </div>
+
+          <!-- 防骗：念一条给管家 -->
+          <div class="view" id="s_ask">
+            <div class="appbar"><span class="back" onclick="go('seniorScreen','s_home')">‹</span><h2>让管家帮你看看</h2></div>
+            <div class="pad" style="padding-top:0;">
+              <p class="muted" style="text-align:center;">拍张收到的短信/收款码截图，或念给管家听 🔊</p>
+              <button class="btn mic-btn" style="background:#eaf7ef;color:var(--green);border-color:#bfe6cf;margin-bottom:12px;" onclick="document.getElementById('imgInput').click()">
+                <span class="mi">📷</span><span>拍照 / 传截图给管家看</span></button>
+              <input id="imgInput" type="file" accept="image/*" capture="environment" style="display:none" onchange="handleImage(this.files[0])">
+              <button id="micBtn" class="btn mic-btn" onclick="toggleMic()">
+                <span class="mi">🎤</span><span id="micLabel">或者，说给管家听</span></button>
+              <p class="muted" id="micHint" style="text-align:center;margin:8px 0 14px;">（说完再点一下停止）</p>
+              <textarea id="s_ask_input" rows="3" style="width:100%;border:1px solid var(--line);border-radius:14px;padding:12px;font-size:16px;font-family:inherit;resize:none;" placeholder="也可以手动贴进来…"></textarea>
+              <p class="muted" style="margin:12px 0 6px;">或点一条文字样例试试：</p>
+              <div id="s_ask_samples"></div>
+              <button class="btn btn-primary" style="margin-top:8px;" onclick="checkFraud()">让管家帮我看看</button>
+            </div>
+          </div>
+
+          <!-- 处理中 -->
+          <div class="view" id="s_checking">
+            <div style="text-align:center;padding:80px 30px;">
+              <div style="font-size:48px;">🤖</div>
+              <p style="font-size:19px;color:var(--navy);font-weight:700;margin-top:16px;">管家正在帮您仔细看…</p>
+              <p class="muted" id="s_checking_sub">正在判断是不是骗人的</p>
+            </div>
+          </div>
+
+          <!-- 防骗结果（AI 填充） -->
+          <div class="view fraud" id="s_fraud">
+            <div class="fraud-hero"><div class="warn" id="s_fraud_ic">⚠️</div>
+              <div class="t" id="s_fraud_t">…</div></div>
+            <div class="voice"><span class="ic">🔊</span><span id="s_fraud_v">…</span></div>
+            <div class="pad" style="padding-top:0;">
+              <div class="card" id="s_fraud_reasons" style="margin-bottom:12px;"></div>
+              <button class="btn btn-ghost" onclick="go('seniorScreen','s_home')">好，我知道了</button>
+            </div>
+          </div>
+
+          <!-- 帮我问问：输入 -->
+          <div class="view" id="s_explain_input">
+            <div class="appbar"><span class="back" onclick="go('seniorScreen','s_home')">‹</span><h2>帮我问问</h2></div>
+            <div class="pad" style="padding-top:0;">
+              <p style="font-size:17px;color:var(--navy);font-weight:600;text-align:center;margin:6px 0 14px;">看不懂的东西，拍给管家，帮你翻译成大白话</p>
+              <button class="btn mic-btn" style="background:#eaf7ef;color:var(--green);border-color:#bfe6cf;margin-bottom:12px;" onclick="document.getElementById('explainImgInput').click()">
+                <span class="mi">📷</span><span>拍照 / 传图片</span></button>
+              <input id="explainImgInput" type="file" accept="image/*" capture="environment" style="display:none" onchange="handleExplainImage(this.files[0])">
+              <div id="explainPreview" style="display:none;text-align:center;margin-bottom:12px;">
+                <img id="explainPreviewImg" style="max-width:100%;max-height:180px;border-radius:12px;border:1px solid var(--line);">
+                <p class="muted" style="margin:4px 0 0;">已拍到，点下面按钮让管家看</p>
+              </div>
+              <button id="explainMicBtn" class="btn mic-btn" onclick="toggleExplainMic()">
+                <span class="mi">🎤</span><span id="explainMicLabel">或者说一下：这是什么</span></button>
+              <textarea id="explain_input" rows="2" style="width:100%;border:1px solid var(--line);border-radius:14px;padding:12px;font-size:16px;font-family:inherit;resize:none;margin-top:10px;" placeholder="补充说明（可不填）：比如'这个短信什么意思'"></textarea>
+              <button class="btn btn-primary" style="margin-top:12px;" onclick="askExplain()">让管家帮我看看</button>
+              <p class="muted" style="text-align:center;margin:10px 0 0;">通知、账单、医院单子、政策文件…什么都能问</p>
+            </div>
+          </div>
+
+          <!-- 帮我问问：结果 -->
+          <div class="view" id="s_explain_result">
+            <div class="appbar"><span class="back" onclick="go('seniorScreen','s_explain_input')">‹</span><h2>管家说</h2></div>
+            <div class="pad" style="padding-top:0;">
+              <div id="explain_type_badge" style="text-align:center;margin-bottom:10px;"></div>
+              <div class="card" style="background:#eaf2fb;border:none;">
+                <div id="explain_summary" style="font-size:20px;font-weight:800;color:var(--navy);line-height:1.5;"></div>
+              </div>
+              <div class="card" id="explain_details" style="font-size:17px;line-height:1.8;"></div>
+              <div class="card" id="explain_action" style="background:#e4f6ec;border:none;font-size:18px;font-weight:700;color:var(--green);"></div>
+              <div id="explain_risk_box" style="display:none;" class="card" style="background:#fbe6e2;"></div>
+              <div class="voice" id="explain_voice"><span class="ic">🔊</span><span id="explain_advice">…</span></div>
+              <button class="btn btn-ghost" style="margin-top:6px;" onclick="go('seniorScreen','s_home')">好，我知道了</button>
+            </div>
+          </div>
+
+          <!-- 演示选择弹层 -->
+          <div class="sheet" id="demoSheet">
+            <div class="sheet-inner">
+              <h4>想让管家帮你办什么？</h4>
+              <div class="demo">（演示入口 · 真实场景里老人只管扫/说，不用选）</div>
+              <div class="sheet-opt" onclick="sheet(false);go('seniorScreen','s_ask')"><span class="e">🚨</span>帮我看看这条短信是不是骗人的</div>
+              <div class="sheet-opt" onclick="sheet(false);menuScan()"><span class="e">🍜</span>扫餐厅点餐码（AI 帮我看菜单）</div>
+              <div class="sheet-opt" onclick="sheet(false);go('seniorScreen','s_explain_input')"><span class="e">❓</span>看不懂的东西，帮我问问</div>
+              <div class="sheet-opt" onclick="sheet(false);go('seniorScreen','s_pay')"><span class="e">💧</span>交水电费</div>
+              <div class="sheet-opt" style="justify-content:center;color:var(--mut);border:none;" onclick="sheet(false)">取消</div>
+            </div>
+          </div>
+
+          <!-- 提醒大字弹层 -->
+          <div class="remind-alert" id="remindAlert">
+            <div class="rico" id="ra_ico">💊</div>
+            <div class="rt" id="ra_title">该吃药了</div>
+            <div class="rsub" id="ra_sub">别忘了哦</div>
+            <button class="big-done" onclick="reminderDone()">我做好了 ✓</button>
+            <button class="snooze" onclick="reminderSnooze()">等一会儿再提醒</button>
+          </div>
+        </div>
+
+        <div class="screen child" id="childScreen">
+          <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+          <div class="roleswitch" onclick="backToEntry()">‹ 切换身份</div>
+
+          <!-- 一览 -->
+          <div class="view active" id="c_home">
+            <div class="c-head"><div class="top"><span>父亲 · 王建国</span><span>省心扫 ▾</span></div>
+              <h2>爸妈今天，一切都好</h2></div>
+            <div class="pad">
+              <div id="c_verifySlot"></div>
+              <div class="stat-card" id="c_stats" onclick="buildShareCard()">
+                <div class="h"><span>🛡️ 本月防骗战绩</span><span>生成分享卡 ›</span></div>
+                <div class="big"><span>拦下诈骗 <b id="st_count">0</b> 次</span><span>避免损失 <b id="st_amt">¥0</b></span></div>
+              </div>
+              <div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;">
+                <span>用药 / 提醒</span>
+                <span style="color:var(--blue);cursor:pointer;font-weight:700;" onclick="go('childScreen','c_remind_add')">＋ 添加</span>
+              </div>
+              <div id="c_reminders"></div>
+              <div style="text-align:center;margin:2px 0 4px;">
+                <span style="font-size:12.5px;color:var(--red);cursor:pointer;" onclick="demoFire()">▶ 演示：现在就提醒爸爸</span>
+              </div>
+              <div class="sec-title">今日代办记录</div>
+              <div id="c_recs">
+                <div class="rec"><span class="ic">💬</span><div class="info"><b>暂无待办</b><div>父母有需要时，这里会提醒你</div></div></div>
+              </div>
+              <div class="sec-title">已配置</div>
+              <div class="card muted" style="margin:0;">✓ 支付方式已绑　✓ 电费户号已绑　✓ 自主额度 50 元
+                <div style="margin-top:6px;">超过 50 元或可疑交易，都会推给你确认。</div></div>
+            </div>
+          </div>
+
+          <!-- 防骗核验（AI 填充） -->
+          <div class="view" id="c_verify">
+            <div class="appbar"><span class="back" onclick="go('childScreen','c_home')">‹</span><h2>可疑内容核验</h2></div>
+            <div class="pad" style="padding-top:0;">
+              <div class="risk" id="c_v_head" style="margin-top:0;font-size:14px;"></div>
+              <div class="card" style="margin-top:12px;">
+                <p class="muted" style="margin:0 0 6px;">父亲收到的内容：</p>
+                <div id="c_v_text" style="font-size:14px;background:#f7f9fc;border-radius:10px;padding:10px;"></div>
+                <div class="risk" id="c_v_reasons" style="margin-top:10px;"></div>
+              </div>
+              <button class="btn btn-danger" onclick="childReject()">是诈骗，驳回并提醒爸爸</button>
+              <div style="height:10px;"></div>
+              <button class="btn btn-ok" onclick="childAllow()">我确认没问题，放行</button>
+            </div>
+          </div>
+
+          <!-- 添加提醒 -->
+          <div class="view" id="c_remind_add">
+            <div class="appbar"><span class="back" onclick="go('childScreen','c_home')">‹</span><h2>给爸爸加个提醒</h2></div>
+            <div class="pad" style="padding-top:0;">
+              <div class="card">
+                <label class="muted">提醒什么</label>
+                <input id="ra_name" class="fld" placeholder="例如：降糖药（二甲双胍）">
+                <label class="muted" style="display:block;margin-top:12px;">几点</label>
+                <input id="ra_time" class="fld" type="time" value="08:00">
+                <label class="muted" style="display:block;margin-top:12px;">类型</label>
+                <select id="ra_type" class="fld">
+                  <option value="药">💊 吃药</option>
+                  <option value="血压">🩺 量血压</option>
+                  <option value="血糖">🩸 测血糖</option>
+                  <option value="事">📌 其他事项</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="addReminder()">保存提醒</button>
+              <p class="muted" style="text-align:center;margin-top:10px;">到点后，爸爸的手机会大字 + 语音提醒</p>
+            </div>
+          </div>
+
+          <!-- 防骗战绩分享卡 -->
+          <div class="view" id="c_share">
+            <div class="appbar"><span class="back" onclick="go('childScreen','c_home')">‹</span><h2>防骗战绩 · 分享卡</h2></div>
+            <div class="pad" style="padding-top:0;">
+              <div class="poster" id="poster">
+                <div class="shield">🛡️</div>
+                <div class="ttl">省心扫帮爸妈挡住了骗子</div>
+                <div class="who" id="po_who">—</div>
+                <div class="nums">
+                  <div class="num"><b id="po_count">0</b><small>次拦下诈骗</small></div>
+                  <div class="num"><b id="po_amt">¥0</b><small>避免损失</small></div>
+                </div>
+                <div class="list" id="po_list"></div>
+                <div class="foot">省心扫 · 老人的数字世界代办管家<br>让爸妈不必追赶这个时代</div>
+              </div>
+              <button class="btn btn-primary" style="margin-top:14px;" onclick="copyShareText()">复制分享文案</button>
+              <p class="muted" style="text-align:center;margin-top:10px;">长按上面卡片保存图片，或截图发到家族群 👨‍👩‍👧‍👦</p>
+            </div>
+          </div>
+        </div>
+</div>
+
+<script>
+function go(sid,vid){const s=document.getElementById(sid);
+  s.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const t=s.querySelector('#'+vid); if(t)t.classList.add('active');}
+function toast(sid,msg){const s=document.getElementById(sid);let e=s.querySelector('.toast');
+  if(!e){e=document.createElement('div');e.className='toast';s.appendChild(e);}
+  e.textContent=msg;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2200);}
+function sheet(show){document.getElementById('demoSheet').classList.toggle('show',show);}
+
+// 身份选择：进入对应全屏界面
+function chooseRole(role){
+  document.getElementById('entry').classList.remove('on');
+  const s=document.getElementById('seniorScreen'),c=document.getElementById('childScreen');
+  if(role==='senior'){s.classList.add('on');c.classList.remove('on');go('seniorScreen','s_home');}
+  else{c.classList.add('on');s.classList.remove('on');go('childScreen','c_home');}
+}
+function backToEntry(){
+  if(window.speechSynthesis)try{speechSynthesis.cancel();}catch(e){}
+  document.getElementById('seniorScreen').classList.remove('on');
+  document.getElementById('childScreen').classList.remove('on');
+  document.getElementById('entry').classList.add('on');
+}
+
+// ===== 用药 / 提醒 =====
+const REM_ICON={'药':'💊','血压':'🩺','血糖':'🩸','事':'📌'};
+let REM=[], firingId=null;
+function loadRem(){
+  try{REM=JSON.parse(localStorage.getItem('sxs_rem')||'null');}catch(e){REM=null;}
+  if(!Array.isArray(REM)||!REM.length){
+    REM=[{id:1,name:'降糖药（二甲双胍）',time:'08:00',type:'药',status:'待'},
+         {id:2,name:'量血压',time:'19:00',type:'血压',status:'待'}];
+    saveRem();
+  }
+}
+function saveRem(){try{localStorage.setItem('sxs_rem',JSON.stringify(REM));}catch(e){}}
+function renderRem(){
+  // 老人端
+  const se=document.getElementById('s_reminders');
+  if(se){
+    const pend=REM.filter(r=>r.status==='待');
+    se.innerHTML=(pend.length?'':'')+REM.map(r=>
+      '<div class="rem-row'+(r.status!=='待'?' done':'')+'"><span class="ic">'+REM_ICON[r.type]+'</span>'+
+      '<div class="tx">'+esc(r.name)+'<small>'+r.time+(r.status!=='待'?' · 已完成 ✓':' · 到点会提醒您')+'</small></div>'+
+      (r.status==='待'?'<span class="pill a">待</span>':'<span class="pill g">好了</span>')+'</div>').join('');
+  }
+  // 子女端
+  const ce=document.getElementById('c_reminders');
+  if(ce){
+    ce.innerHTML=REM.length?REM.map(r=>{
+      const done=r.status!=='待';
+      return '<div class="crem"><span class="ic">'+REM_ICON[r.type]+'</span>'+
+        '<div class="info">'+esc(r.name)+'<small>每天 '+r.time+'</small></div>'+
+        '<span class="st" style="background:'+(done?'#e4f6ec':'#fdf1de')+';color:'+(done?'var(--green)':'#b9791a')+'">'+(done?'已完成':'待完成')+'</span></div>';
+    }).join(''):'<div class="muted" style="padding:4px 2px;">还没有提醒，点右上角"＋添加"</div>';
+  }
+}
+function addReminder(){
+  const name=document.getElementById('ra_name').value.trim();
+  const time=document.getElementById('ra_time').value||'08:00';
+  const type=document.getElementById('ra_type').value;
+  if(!name){toast('childScreen','填一下提醒什么');return;}
+  REM.push({id:Date.now(),name,time,type,status:'待'});
+  saveRem();renderRem();
+  document.getElementById('ra_name').value='';
+  go('childScreen','c_home');
+  toast('childScreen','提醒已设置，到点会提醒爸爸');
+}
+function fireReminder(rem){
+  if(!rem)return;firingId=rem.id;
+  document.getElementById('ra_ico').textContent=REM_ICON[rem.type];
+  document.getElementById('ra_title').textContent=(rem.type==='药'?'该吃药了':rem.type==='血压'?'该量血压了':rem.type==='血糖'?'该测血糖了':'该做这件事了');
+  document.getElementById('ra_sub').textContent=rem.name;
+  document.getElementById('remindAlert').classList.add('on');
+  speak((rem.type==='药'?'王大爷，该吃药了，':'王大爷，提醒您，')+rem.name+'。做好了点一下那个大按钮就行。');
+}
+function reminderDone(){
+  const r=REM.find(x=>x.id===firingId);
+  if(r){r.status='已完成';saveRem();renderRem();
+    addRec(REM_ICON[r.type],'完成提醒：'+r.name,'父亲已确认完成');
+    toast('childScreen','爸爸完成了：'+r.name);}
+  document.getElementById('remindAlert').classList.remove('on');
+  toast('seniorScreen','记下了，真棒 👍');
+  speak('记下了，真棒。');
+  firingId=null;
+}
+function reminderSnooze(){
+  document.getElementById('remindAlert').classList.remove('on');
+  toast('seniorScreen','好，等会儿再提醒您');
+}
+// 演示：立即在爸爸手机上提醒（自动切到长辈端看效果）
+function demoFire(){
+  const r=REM.find(x=>x.status==='待')||REM[0];
+  if(!r){toast('childScreen','先添加一个提醒');return;}
+  chooseRole('senior');
+  setTimeout(()=>fireReminder(r),300);
+}
+// 到点自动提醒（仅当正用着长辈端时弹，模拟老人的手机）
+function checkReminders(){
+  const now=new Date(),hm=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const today=now.toDateString();
+  REM.forEach(r=>{
+    if(r.status==='待'&&r.time===hm&&r.firedOn!==today){
+      r.firedOn=today;saveRem();
+      if(document.getElementById('seniorScreen').classList.contains('on'))fireReminder(r);
+    }
+  });
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+// ===== 语音播报 TTS =====
+let ttsOn=true;
+function toggleTTS(){ttsOn=!ttsOn;document.getElementById('ttsToggle').textContent='🔊 语音播报：'+(ttsOn?'开':'关');if(!ttsOn&&window.speechSynthesis)speechSynthesis.cancel();}
+function speak(text){
+  if(!ttsOn||!text||!('speechSynthesis' in window))return;
+  try{speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(String(text).replace(/[🔊🛡️⚠️✅🎤]/g,''));
+    u.lang='zh-CN';u.rate=0.92;u.pitch=1;speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+// ===== 语音识别 ASR =====
+let rec=null,listening=false;
+function toggleMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const btn=document.getElementById('micBtn'),label=document.getElementById('micLabel'),hint=document.getElementById('micHint');
+  if(!SR){hint.textContent='这个浏览器不支持语音，请手动贴入或点下方样例（Chrome/Edge 支持）';return;}
+  if(listening){ if(rec)rec.stop(); return; }
+  rec=new SR();rec.lang='zh-CN';rec.interimResults=true;rec.continuous=true;
+  let finalTxt='';
+  rec.onstart=()=>{listening=true;btn.classList.add('listening');label.textContent='正在听…（说完点我停止）';hint.textContent='请对着手机念短信内容';};
+  rec.onresult=(e)=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalTxt+=t;else interim+=t;}
+    document.getElementById('s_ask_input').value=(finalTxt+interim).trim();};
+  rec.onerror=(e)=>{hint.textContent='没听清或没有麦克风权限，可手动贴入';};
+  rec.onend=()=>{listening=false;btn.classList.remove('listening');label.textContent='点这里，说给管家听';
+    hint.textContent=document.getElementById('s_ask_input').value?'听到了，点下面"让管家帮我看看"':'（说完再点一下停止）';};
+  try{rec.start();}catch(e){}
+}
+
+// 预设样例短信
+const SAMPLES=[
+  "【中国XX银行】尊敬的客户，您的账户存在异常，为避免冻结请立即点击 http://icbc-safe.top 核实身份并输入短信验证码。",
+  "爸，我手机摔坏了这是新号，我急着交学费2800元老师在催，你先转到这个账号6217****，晚点我还你。",
+  "恭喜您被抽中《中国好声音》场外幸运观众！领取6万元礼金及苹果电脑，请加导演微信 hdz8899 办理。",
+  "【顺丰速运】您有一个包裹已到菜鸟驿站，凭取件码 8-2-3391 领取，如有疑问回电驿站。"
+];
+let lastFraud=null; // {text, ai}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  const box=document.getElementById('s_ask_samples');
+  SAMPLES.forEach(s=>{
+    const d=document.createElement('div');d.className='card';
+    d.style.cssText='cursor:pointer;font-size:13px;margin-bottom:8px;padding:10px 12px;';
+    d.textContent=(s.length>40?s.slice(0,40)+'…':s);
+    d.onclick=()=>{document.getElementById('s_ask_input').value=s;};
+    box.appendChild(d);
+  });
+  loadRem();renderRem();
+  loadBlocks();renderStats();
+  setInterval(checkReminders,20000);
+});
+
+// ===== 防骗战绩 =====
+let BLOCKS=[];
+function loadBlocks(){
+  try{BLOCKS=JSON.parse(localStorage.getItem('sxs_blocks')||'null');}catch(e){BLOCKS=null;}
+  if(!Array.isArray(BLOCKS)){
+    const now=new Date(),d=86400000, day=now.getDate();
+    // 种子日期都落在本月内（避免跨月）
+    BLOCKS=[
+      {t:now.getTime()-Math.min(2,day-1)*d,verdict:'冒充银行"账户冻结"钓鱼',amount:8000},
+      {t:now.getTime()-Math.min(5,day-1)*d,verdict:'冒充客服"退款"诈骗',amount:5880},
+    ];
+    saveBlocks();
+  }
+}
+function saveBlocks(){try{localStorage.setItem('sxs_blocks',JSON.stringify(BLOCKS));}catch(e){}}
+function parseAmount(s){
+  s=String(s||'');
+  let m=s.match(/(\d[\d,]*\.?\d*)\s*万/); if(m)return Math.round(parseFloat(m[1].replace(/,/g,''))*10000);
+  m=s.match(/(\d[\d,]{2,})\s*(元|块|块钱)?/); if(m){const n=parseInt(m[1].replace(/,/g,''));if(n>=100)return n;}
+  return null;
+}
+function estimateAmount(txt){
+  const s=String(txt||'');
+  if(/中奖|奖金|礼金|抽中/.test(s))return 3000;
+  if(/客服|退款|理赔|退货/.test(s))return 5000;
+  if(/冻结|银行|验证码|洗钱|安全账户|公检法|警/.test(s))return 8000;
+  if(/学费|急|手机坏|新号|老师/.test(s))return 2800;
+  return 1500;
+}
+function recordBlock(ai){
+  if(!ai||(ai.risk!=='高'&&ai.risk!=='中'))return;
+  const src=((window.lastFraud&&window.lastFraud.text)||'')+' '+(ai.verdict||'')+' '+((ai.reasons||[]).join(' '));
+  const amount=parseAmount(src)||estimateAmount(src);
+  BLOCKS.push({t:Date.now(),verdict:(ai.verdict||'可疑内容').replace(/[！!。]/g,'').slice(0,16),amount});
+  saveBlocks();renderStats();
+}
+function monthBlocks(){
+  const n=new Date();return BLOCKS.filter(b=>{const d=new Date(b.t);return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();});
+}
+function renderStats(){
+  const mb=monthBlocks(),sum=mb.reduce((a,b)=>a+(b.amount||0),0);
+  const c=document.getElementById('st_count'),a=document.getElementById('st_amt');
+  if(c)c.textContent=mb.length; if(a)a.textContent='¥'+sum.toLocaleString();
+}
+function buildShareCard(){
+  const mb=monthBlocks().slice().sort((x,y)=>y.t-x.t),sum=mb.reduce((a,b)=>a+(b.amount||0),0);
+  const n=new Date();
+  document.getElementById('po_who').textContent='王建国爸爸 · '+n.getFullYear()+'年'+(n.getMonth()+1)+'月';
+  document.getElementById('po_count').textContent=mb.length;
+  document.getElementById('po_amt').textContent='¥'+sum.toLocaleString();
+  document.getElementById('po_list').innerHTML=mb.length?mb.slice(0,4).map(b=>{
+    const d=new Date(b.t);
+    return '<div><span>'+(d.getMonth()+1)+'/'+d.getDate()+' 拦下 '+esc(b.verdict)+'</span><span>¥'+(b.amount||0).toLocaleString()+'</span></div>';
+  }).join(''):'<div>本月暂无拦截记录</div>';
+  go('childScreen','c_share');
+}
+function copyShareText(){
+  const mb=monthBlocks(),sum=mb.reduce((a,b)=>a+(b.amount||0),0);
+  const txt='【省心扫·防骗战绩】本月帮爸妈拦下 '+mb.length+' 次诈骗，避免损失约 ¥'+sum.toLocaleString()+'。给家里老人也装一个，让骗子近不了身 🛡️';
+  if(navigator.clipboard)navigator.clipboard.writeText(txt).then(()=>toast('childScreen','文案已复制，去家族群粘贴吧')).catch(()=>toast('childScreen',txt));
+  else toast('childScreen','文案：'+txt);
+}
+
+// ===== 真·防骗核验 =====
+async function checkFraud(){
+  const text=document.getElementById('s_ask_input').value.trim();
+  if(!text){toast('seniorScreen','先念一条或贴一条内容');return;}
+  go('seniorScreen','s_checking');
+  try{
+    const r=await fetch('/api/fraud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const ai=await r.json();
+    if(ai.error) throw new Error(ai.error);
+    lastFraud={text,ai};
+    renderFraud(ai);
+    if(ai.risk==='高'||ai.risk==='中') pushToChild(text,ai);
+  }catch(e){
+    toast('seniorScreen','管家没连上，稍后再试');
+    go('seniorScreen','s_ask');
+    console.error(e);
+  }
+}
+// ===== 拍照/截图 防骗（真·视觉） =====
+function handleImage(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=async()=>{
+      // 压缩到最长边 1280，减小上传体积、加快识别
+      const max=1280,scale=Math.min(1,max/Math.max(img.width,img.height));
+      const cw=Math.round(img.width*scale),ch=Math.round(img.height*scale);
+      const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+      cv.getContext('2d').drawImage(img,0,0,cw,ch);
+      const dataUri=cv.toDataURL('image/jpeg',0.82);
+      const note=document.getElementById('s_ask_input').value.trim();
+      go('seniorScreen','s_checking');
+      document.getElementById('s_checking_sub').textContent='正在看这张图，认字 + 判断…';
+      try{
+        const r=await fetch('/api/fraud-image',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:dataUri,note})});
+        const ai=await r.json();
+        if(ai.error) throw new Error(ai.error);
+        lastFraud={text:note||'（老人拍来的一张截图）',ai};
+        renderFraud(ai);
+        if(ai.risk==='高'||ai.risk==='中') pushToChild(lastFraud.text,ai);
+      }catch(e){
+        toast('seniorScreen', String(e.message).includes('视觉')?'还没配置看图模型':'管家没连上，稍后再试');
+        go('seniorScreen','s_ask');console.error(e);
+      }
+    };
+    img.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderFraud(ai){
+  const map={'高':['⚠️','var(--red)'],'中':['⚠️','var(--amber)'],'低':['✅','var(--green)']};
+  const [ic,color]=map[ai.risk]||map['中'];
+  const hero=document.querySelector('#s_fraud .fraud-hero .warn');
+  hero.textContent=ic; hero.style.background=color; hero.style.boxShadow='0 0 0 10px rgba(0,0,0,.05)';
+  const t=document.getElementById('s_fraud_t');
+  t.style.color=color; t.textContent=ai.verdict||(ai.risk+'风险');
+  const vEl=document.getElementById('s_fraud_v');
+  vEl.textContent='🔊 '+(ai.adviceForElder||'');
+  vEl.classList.add('speaker');vEl.onclick=()=>speak((ai.verdict||'')+'。'+(ai.adviceForElder||''));
+  const rz=(ai.reasons||[]).map(x=>'<div style="margin:4px 0;">• '+esc(x)+'</div>').join('');
+  document.getElementById('s_fraud_reasons').innerHTML='<b style="color:'+color+'">为什么这么说：</b>'+rz;
+  go('seniorScreen','s_fraud');
+  speak((ai.verdict||'')+'。'+(ai.adviceForElder||''));   // 自动朗读
+  recordBlock(ai);   // 计入防骗战绩
+}
+function pushToChild(text,ai){
+  toast('childScreen','⚠️ 父亲收到可疑内容，请核验');
+  document.getElementById('c_verifySlot').innerHTML=
+    '<div class="verify-alert" onclick="openVerify()"><span class="ic">🚨</span><div>'+
+    '<b>待核验：管家判定为「'+esc(ai.risk)+'风险」</b>'+
+    '<small>'+esc((ai.verdict||'').slice(0,24))+' · 点此核验</small></div></div>';
+}
+function openVerify(){
+  if(!lastFraud)return;
+  const {text,ai}=lastFraud;
+  const color=ai.risk==='高'?'var(--red)':ai.risk==='中'?'var(--amber)':'var(--green)';
+  document.getElementById('c_v_head').innerHTML='<b style="color:'+color+'">🤖 管家判定：'+esc(ai.risk)+'风险 —— '+esc(ai.verdict||'')+'</b>';
+  document.getElementById('c_v_text').textContent=text;
+  document.getElementById('c_v_reasons').innerHTML='<b>可疑点：</b>'+(ai.reasons||[]).map(x=>'<div>• '+esc(x)+'</div>').join('')+
+    (ai.adviceForChild?'<div style="margin-top:8px;"><b>给你的建议：</b>'+esc(ai.adviceForChild)+'</div>':'');
+  go('childScreen','c_verify');
+}
+function childReject(){
+  toast('childScreen','已驳回，并提醒了爸爸');
+  document.getElementById('c_verifySlot').innerHTML='';
+  addRec('🛡️','拦下一次诈骗','女儿核验：'+((lastFraud&&lastFraud.ai.verdict)||'确认为诈骗')+' · 已驳回');
+  go('childScreen','c_home');
+  const b=document.getElementById('s_care');
+  b.textContent='💬 女儿：爸，这是骗子！千万别信、别付，我帮你拦下了 🛡️';
+  b.classList.add('show');
+  const warn=document.querySelector('#s_fraud .fraud-hero .warn');
+  warn.textContent='🛡️'; warn.style.background='var(--red)';
+  document.getElementById('s_fraud_t').innerHTML='女儿说：是诈骗<br>已帮你拦下，别信！';
+  document.getElementById('s_fraud_v').textContent='🔊 你女儿确认了，这是骗子，别理它。以后拿不准的，都先问她。';
+  go('seniorScreen','s_fraud');
+  toast('seniorScreen','女儿说是骗子，已拦下 🛡️');
+  speak('你女儿确认了，这是骗子，钱千万别付。以后拿不准的，都先问她。');
+}
+function childAllow(){
+  toast('childScreen','已放行');
+  document.getElementById('c_verifySlot').innerHTML='';
+  go('childScreen','c_home');
+  const warn=document.querySelector('#s_fraud .fraud-hero .warn');
+  warn.textContent='✅'; warn.style.background='var(--green)';
+  document.getElementById('s_fraud_t').style.color='var(--green)';
+  document.getElementById('s_fraud_t').innerHTML='女儿说没问题<br>可以放心';
+  document.getElementById('s_fraud_v').textContent='🔊 你女儿看过了，说这个没问题。';
+  go('seniorScreen','s_fraud');
+  toast('seniorScreen','女儿说没问题 ✅');
+  speak('你女儿看过了，说这个没问题，可以放心。');
+}
+
+// ===== 真·点餐翻译 =====
+async function menuScan(){
+  go('seniorScreen','s_checking');
+  document.getElementById('s_checking_sub').textContent='正在把菜单变简单';
+  try{
+    const r=await fetch('/api/menu',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    const ai=await r.json();
+    if(ai.error) throw new Error(ai.error);
+    document.getElementById('s_menu_shop').textContent=(ai.shop||'餐厅')+' · 点菜';
+    document.getElementById('s_menu_list').innerHTML=(ai.items||[]).map(it=>
+      '<div class="menu-item"><span class="mi-ic">'+esc(it.emoji||'🍽️')+'</span>'+
+      '<span class="mi-tx">'+esc(it.name)+'<small>'+esc(it.price)+' 元'+(it.note?' · '+esc(it.note):'')+'</small></span>'+
+      '<div class="stepper"><button onclick="toast(\'seniorScreen\',\'加了1份 '+esc(it.name)+'\')">+</button><span class="qty">0</span></div></div>'
+    ).join('');
+    const recEl=document.getElementById('s_menu_rec');
+    recEl.textContent='🔊 '+(ai.recommend||'');
+    recEl.classList.add('speaker');recEl.onclick=()=>speak(ai.recommend||'');
+    document.getElementById('s_checking_sub').textContent='正在判断是不是骗人的';
+    go('seniorScreen','s_menu');
+    speak('菜单我帮你整理好了。'+(ai.recommend||''));
+  }catch(e){toast('seniorScreen','管家没连上，稍后再试');go('seniorScreen','s_home');console.error(e);}
+}
+
+// 点餐下单（不碰支付）
+function order(){
+  toast('seniorScreen','订单已生成，请用饭馆的微信付款');
+  addRec('🍜','午餐点单','已下单，支付走商家微信（我们不碰钱）');
+  setTimeout(()=>go('seniorScreen','s_home'),700);
+}
+// 缴费（额度内老人自主）
+function seniorPay(){
+  toast('seniorScreen','电费交好了，共 86 元');
+  go('seniorScreen','s_home');
+  document.querySelector('#s_home .s-row .pill').textContent='已交';
+  addRec('💡','缴电费 86 元','父亲自主完成（额度内）');
+}
+// ===== 帮我问问 =====
+let explainImageData=null;
+function handleExplainImage(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const max=1280,scale=Math.min(1,max/Math.max(img.width,img.height));
+      const cw=Math.round(img.width*scale),ch=Math.round(img.height*scale);
+      const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+      cv.getContext('2d').drawImage(img,0,0,cw,ch);
+      explainImageData=cv.toDataURL('image/jpeg',0.82);
+      document.getElementById('explainPreviewImg').src=explainImageData;
+      document.getElementById('explainPreview').style.display='block';
+    };
+    img.src=reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+let explainRec=null,explainListening=false;
+function toggleExplainMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const btn=document.getElementById('explainMicBtn'),label=document.getElementById('explainMicLabel');
+  if(!SR){toast('seniorScreen','浏览器不支持语音，请手动输入');return;}
+  if(explainListening){if(explainRec)explainRec.stop();return;}
+  explainRec=new SR();explainRec.lang='zh-CN';explainRec.interimResults=true;explainRec.continuous=true;
+  let finalTxt='';
+  explainRec.onstart=()=>{explainListening=true;btn.classList.add('listening');label.textContent='正在听…（说完点我停止）';};
+  explainRec.onresult=(e)=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalTxt+=t;else interim+=t;}
+    document.getElementById('explain_input').value=(finalTxt+interim).trim();};
+  explainRec.onend=()=>{explainListening=false;btn.classList.remove('listening');label.textContent='或者说一下：这是什么';};
+  try{explainRec.start();}catch(e){}
+}
+async function askExplain(){
+  const text=document.getElementById('explain_input').value.trim();
+  if(!explainImageData&&!text){toast('seniorScreen','先拍张照片或说一下您想问什么');return;}
+  go('seniorScreen','s_checking');
+  document.getElementById('s_checking_sub').textContent='管家正在帮您看…';
+  try{
+    const body={};
+    if(explainImageData)body.image=explainImageData;
+    if(text)body.text=text;
+    const r=await fetch('/api/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const ai=await r.json();
+    if(ai.error)throw new Error(ai.error);
+    renderExplain(ai,text);
+  }catch(e){
+    toast('seniorScreen','管家没连上，稍后再试');
+    go('seniorScreen','s_explain_input');
+    console.error(e);
+  }
+}
+function renderExplain(ai,originalText){
+  const typeColors={'可疑信息':'var(--red)','广告':'var(--amber)'};
+  const color=ai.risk==='可疑'?'var(--red)':ai.risk==='需注意'?'var(--amber)':'var(--green)';
+  const badge=document.getElementById('explain_type_badge');
+  badge.innerHTML='<span class="pill" style="background:'+color+'22;color:'+color+';font-size:14px;padding:5px 14px;">'+esc(ai.type||'通知')+'</span>';
+  document.getElementById('explain_summary').textContent=ai.summary||'';
+  const details=(ai.details||'').split(/[;；\n]/).filter(Boolean);
+  document.getElementById('explain_details').innerHTML=details.map(d=>'<div style="margin:4px 0;">• '+esc(d.trim())+'</div>').join('');
+  const actionEl=document.getElementById('explain_action');
+  actionEl.textContent=ai.action||'不用做什么';
+  actionEl.style.color=ai.risk==='可疑'?'var(--red)':'var(--green)';
+  actionEl.style.background=ai.risk==='可疑'?'#fbe6e2':'#e4f6ec';
+  const riskBox=document.getElementById('explain_risk_box');
+  if(ai.risk&&ai.risk!=='无风险'&&ai.riskNote){
+    riskBox.style.display='block';
+    riskBox.style.background='#fbe6e2';riskBox.style.borderRadius='16px';riskBox.style.padding='14px 16px';
+    riskBox.innerHTML='<span style="color:var(--red);font-weight:700;">'+esc(ai.risk)+'</span> '+esc(ai.riskNote);
+  }else{riskBox.style.display='none';}
+  const adviceEl=document.getElementById('explain_advice');
+  adviceEl.textContent=ai.adviceForElder||'';
+  document.getElementById('explain_voice').onclick=()=>speak(ai.adviceForElder||'');
+  go('seniorScreen','s_explain_result');
+  speak(ai.adviceForElder||ai.summary||'');
+  if(ai.needChild){
+    pushExplainToChild(originalText||'（拍照问的）',ai);
+  }
+  addRec('❓','帮我问问：'+(ai.type||'通知').slice(0,6),(ai.summary||'').slice(0,20));
+  explainImageData=null;
+  document.getElementById('explainPreview').style.display='none';
+  document.getElementById('explain_input').value='';
+}
+function pushExplainToChild(text,ai){
+  toast('childScreen','父亲有个东西看不懂，可能需要你帮忙');
+  document.getElementById('c_verifySlot').innerHTML=
+    '<div class="verify-alert" onclick="openExplainVerify()"><span class="ic">❓</span><div>'+
+    '<b>父亲问了个东西：'+esc((ai.type||'').slice(0,8))+'</b>'+
+    '<small>'+esc((ai.summary||'').slice(0,28))+' · 点此查看</small></div></div>';
+  window.lastExplain={text,ai};
+}
+function openExplainVerify(){
+  if(!window.lastExplain)return;
+  const {text,ai}=window.lastExplain;
+  const color=ai.risk==='可疑'?'var(--red)':ai.risk==='需注意'?'var(--amber)':'var(--green)';
+  document.getElementById('c_v_head').innerHTML='<b style="color:'+color+'">管家判定：'+esc(ai.risk||'无风险')+' —— '+esc(ai.type||'')+'</b>';
+  document.getElementById('c_v_text').textContent=ai.summary||text;
+  document.getElementById('c_v_reasons').innerHTML=
+    '<b>详情：</b><div>'+esc(ai.details||'')+'</div>'+
+    '<div style="margin-top:6px;"><b>建议动作：</b>'+esc(ai.action||'')+'</div>'+
+    (ai.riskNote?'<div style="margin-top:6px;color:var(--red);">'+esc(ai.riskNote)+'</div>':'');
+  go('childScreen','c_verify');
+}
+
+// 通用：给子女端加记录
+function addRec(ic,title,desc){
+  const box=document.getElementById('c_recs');
+  if(box.dataset.clean!=='1'){box.innerHTML='';box.dataset.clean='1';}
+  const d=document.createElement('div');d.className='rec';
+  d.innerHTML='<span class="ic">'+ic+'</span><div class="info"><b>'+esc(title)+'</b><div>'+esc(desc)+'</div></div>';
+  box.prepend(d);
+}
+</script>
+</body>
+</html>
