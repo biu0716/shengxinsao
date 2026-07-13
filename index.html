@@ -195,6 +195,17 @@
   .call-header .call-status{font-size:13px;color:rgba(255,255,255,.6);}
   .call-header .call-timer{font-size:16px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums;}
   .call-header .call-name{font-size:20px;font-weight:800;margin-top:12px;}
+  .mock-sms{position:absolute;z-index:8;top:12px;left:12px;right:12px;background:rgba(248,249,252,.98);color:#1f2733;
+       border-radius:18px;padding:12px 14px;box-shadow:0 12px 34px rgba(0,0,0,.32);transform:translateY(-140%);opacity:0;
+       transition:transform .38s ease,opacity .3s ease;cursor:pointer;}
+  .mock-sms.show{transform:translateY(0);opacity:1;}
+  .mock-sms .sms-head{display:flex;align-items:center;gap:8px;font-size:12px;color:#6f7887;margin-bottom:7px;}
+  .mock-sms .sms-app{width:22px;height:22px;border-radius:7px;background:#37b66d;color:#fff;display:flex;align-items:center;
+       justify-content:center;font-size:13px;}
+  .mock-sms .sms-time{margin-left:auto;}
+  .mock-sms .sms-from{font-size:14px;font-weight:800;margin-bottom:3px;}
+  .mock-sms .sms-body{font-size:14px;line-height:1.48;}
+  .mock-sms .sms-code{font-size:18px;font-weight:900;letter-spacing:2px;color:#b3311f;}
   .call-subtitle-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 24px;}
   .call-subtitle{font-size:22px;line-height:1.7;font-weight:600;text-align:center;color:#fff;
        max-width:100%;transition:opacity .3s;}
@@ -445,6 +456,11 @@
 
           <!-- 防骗陪练：通话界面 -->
           <div class="view" id="s_drill_call">
+            <div class="mock-sms" id="drillMockSms" onclick="drillHideMockSms()">
+              <div class="sms-head"><span class="sms-app">✉</span><span>信息 · 防骗练习</span><span class="sms-time">刚刚</span></div>
+              <div class="sms-from">95588（模拟短信）</div>
+              <div class="sms-body">模拟验证码：<span class="sms-code" id="drillMockCode">000000</span><br>任何人索要验证码都不要告诉他。此短信仅用于练习。</div>
+            </div>
             <div class="call-header">
               <div class="call-status">通话中...</div>
               <div class="call-timer" id="drillTimer">00:00</div>
@@ -1141,7 +1157,8 @@ const DRILL_SCENARIOS=[
   {id:'health_product',emoji:'💊',title:'保健品推销',desc:'限时折扣、治百病',phone:'400-156-****',tag:'健康咨询'},
   {id:'gov_impersonation',emoji:'👮',title:'冒充公检法',desc:'涉嫌犯罪、转移资金',phone:'010-6652****',tag:'公安局'}
 ];
-let drillState={scenario:null,history:[],round:0,ended:false,loading:false,timerInterval:null,seconds:0};
+let drillState={scenario:null,history:[],round:0,ended:false,loading:false,timerInterval:null,seconds:0,
+  mockSmsShown:false,mockCode:'',mockSmsTimer:null};
 
 function drillRenderPicker(){
   const grid=document.getElementById('drillSceneGrid');
@@ -1163,6 +1180,8 @@ function drillSelectScenario(id,el){
 function drillStart(){
   if(!drillState.scenario)return;
   drillState.history=[];drillState.round=0;drillState.ended=false;drillState.loading=false;
+  drillState.mockSmsShown=false;drillState.mockCode='';
+  drillHideMockSms();
   const sc=DRILL_SCENARIOS.find(s=>s.id===drillState.scenario);
   document.getElementById('drillIncAvatar').textContent=sc.emoji;
   document.getElementById('drillIncNumber').textContent=sc.phone;
@@ -1209,6 +1228,27 @@ function drillStopTimer(){
   if(drillState.timerInterval){clearInterval(drillState.timerInterval);drillState.timerInterval=null;}
 }
 
+function drillMaybeShowMockSms(reply){
+  if(drillState.scenario!=='fake_bank'||drillState.mockSmsShown||!/验证码|短信/.test(reply))return;
+  drillState.mockSmsShown=true;
+  drillState.mockCode=String(Math.floor(100000+Math.random()*900000));
+  setTimeout(()=>{
+    if(drillState.ended)return;
+    document.getElementById('drillMockCode').textContent=drillState.mockCode;
+    document.getElementById('drillMockSms').classList.add('show');
+    drillState.history.push({role:'system',content:'[防骗练习收到一条模拟短信，模拟验证码为 '+drillState.mockCode+'。任何人索要验证码都不应告知]'});
+    if(navigator.vibrate)try{navigator.vibrate([80,50,80]);}catch(e){}
+    clearTimeout(drillState.mockSmsTimer);
+    drillState.mockSmsTimer=setTimeout(()=>drillHideMockSms(),9000);
+  },700);
+}
+
+function drillHideMockSms(){
+  const el=document.getElementById('drillMockSms');
+  if(el)el.classList.remove('show');
+  if(drillState.mockSmsTimer){clearTimeout(drillState.mockSmsTimer);drillState.mockSmsTimer=null;}
+}
+
 async function drillFetchReply(){
   if(drillState.loading)return;
   drillState.loading=true;
@@ -1226,6 +1266,7 @@ async function drillFetchReply(){
     drillState.round++;
     sub.textContent='"'+reply+'"';sub.classList.remove('loading');
     if(typeof speak==='function')speak(reply);
+    drillMaybeShowMockSms(reply);
     if(data.shouldEnd||drillState.round>=5){setTimeout(()=>drillEnd(),1500);}
   }catch(e){
     sub.textContent='(信号不好，请重试)';sub.classList.remove('loading');
@@ -1254,12 +1295,14 @@ function drillShowKeyboard(){
 
 function drillHangUp(){
   if(drillState.ended)return;
+  drillHideMockSms();
   drillState.history.push({role:'user',content:'[用户挂断了电话，明确拒绝了骗子]'});
   drillEnd();
 }
 
 async function drillEnd(){
   drillState.ended=true;
+  drillHideMockSms();
   drillStopTimer();
   if(drillMicOn&&drillRecog){drillRecog.stop();drillMicOn=false;}
   const sub=document.getElementById('drillSubtitle');
