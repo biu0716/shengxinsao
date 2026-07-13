@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>省心扫</title>
+<meta name="theme-color" content="#182b4d">
+<meta name="description" content="给爸妈的防骗陪练。模拟真实诈骗来电，提前练会识别、挂断和求助。">
+<title>省心扫｜给爸妈的防骗陪练</title>
 <style>
   :root{--navy:#1F3864;--blue:#2E5496;--accent:#2f8fe0;
     --green:#2fae66;--amber:#f0a326;--red:#e0553f;
@@ -24,16 +26,30 @@
   .view::-webkit-scrollbar{width:0;}
   /* 身份选择入口 */
   .entry{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;
-       align-items:center;padding:32px;background:linear-gradient(165deg,#24406f,#2e5496);color:#fff;text-align:center;}
+       align-items:center;padding:32px;background:linear-gradient(165deg,#182b4d 0%,#2e5496 62%,#376db8 100%);color:#fff;text-align:center;}
   .entry.on{display:flex;}
-  .entry .logo{font-size:44px;font-weight:900;letter-spacing:3px;}
-  .entry .slogan{font-size:15px;opacity:.9;margin:10px 0 40px;line-height:1.7;}
+  .entry .entry-mark{width:82px;height:82px;border-radius:26px;background:rgba(255,255,255,.14);display:flex;
+       align-items:center;justify-content:center;font-size:42px;margin-bottom:18px;border:1px solid rgba(255,255,255,.2);
+       box-shadow:0 14px 36px rgba(7,17,34,.22);}
+  .entry .eyebrow{font-size:13px;font-weight:800;letter-spacing:2px;color:#bcd7ff;margin-bottom:8px;}
+  .entry .logo{font-size:42px;font-weight:900;letter-spacing:3px;}
+  .entry .slogan{font-size:17px;opacity:.96;margin:12px 0 32px;line-height:1.65;}
   .entry .role{width:100%;max-width:320px;background:#fff;color:var(--navy);border:none;border-radius:18px;
        padding:22px;margin-bottom:16px;font-size:20px;font-weight:800;cursor:pointer;display:flex;
-       align-items:center;gap:14px;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,.15);}
+       align-items:center;gap:14px;justify-content:flex-start;text-align:left;box-shadow:0 8px 20px rgba(0,0,0,.15);}
+  .entry .role.primary{background:#f2ad36;color:#172a49;box-shadow:0 10px 28px rgba(240,163,38,.28);}
+  .entry .role.secondary{background:rgba(255,255,255,.96);}
   .entry .role .e{font-size:30px;}
-  .entry .role small{display:block;font-size:13px;font-weight:400;color:var(--mut);margin-top:3px;}
+  .entry .role small{display:block;font-size:13px;font-weight:500;color:#667286;margin-top:4px;line-height:1.45;}
   .entry .foot{font-size:12px;opacity:.7;margin-top:20px;}
+  @media (max-height:650px){
+    .entry{justify-content:flex-start;overflow-y:auto;padding-top:22px;padding-bottom:22px;}
+    .entry .entry-mark{width:64px;height:64px;font-size:32px;margin-bottom:10px;}
+    .entry .logo{font-size:34px;}
+    .entry .slogan{font-size:15px;margin:8px 0 20px;}
+    .entry .role{padding:16px 18px;margin-bottom:10px;}
+    .entry .foot{margin-top:8px;}
+  }
   /* 切换身份浮标 */
   .roleswitch{position:absolute;top:9px;left:14px;z-index:6;font-size:12px;color:var(--blue);
        background:rgba(255,255,255,.8);border-radius:10px;padding:3px 9px;cursor:pointer;}
@@ -62,6 +78,12 @@
   .big-btn .cam{font-size:56px;line-height:1;}
   .big-btn .t{font-size:26px;font-weight:800;margin-top:10px;letter-spacing:1px;}
   .big-btn .sub{font-size:15px;opacity:.9;margin-top:5px;}
+  .drill-home{background:linear-gradient(145deg,#e0553f,#bd3d2b);box-shadow:0 12px 28px rgba(224,85,63,.3);padding:28px 20px;}
+  .drill-home .cam{font-size:48px;}
+  .drill-home .sub{line-height:1.55;}
+  .s-section{margin:20px 20px 9px;color:var(--mut);font-size:13px;font-weight:800;letter-spacing:.7px;}
+  .s-safe-tip{display:flex;gap:10px;align-items:flex-start;margin:0 16px 8px;padding:13px 15px;border-radius:16px;
+       background:#fff5e5;color:#845817;font-size:14px;line-height:1.5;border:1px solid #f6dfb9;}
   .s-row{display:flex;align-items:center;gap:14px;background:#fff;margin:0 16px 12px;padding:18px;
        border-radius:20px;box-shadow:0 2px 10px rgba(30,56,100,.06);cursor:pointer;}
   .s-row .ic{font-size:30px;}.s-row .tx{font-size:18px;font-weight:600;}
@@ -120,6 +142,15 @@
   .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;}
   .kv:last-child{border:none;} .kv .k{color:var(--mut);} .kv .v{font-weight:700;}
   .risk{background:#fbe6e2;border-radius:10px;padding:10px 12px;color:#8a4433;font-size:13px;margin-top:10px;}
+  .challenge-card{background:linear-gradient(145deg,#fff7e9,#fff);border:1px solid #f0d39d;border-radius:18px;
+       padding:17px;margin-bottom:14px;box-shadow:0 4px 14px rgba(136,89,18,.08);}
+  .challenge-card .ctop{display:flex;align-items:center;gap:11px;}
+  .challenge-card .cic{font-size:34px;}
+  .challenge-card .ctx{flex:1;}
+  .challenge-card .ctx b{display:block;color:var(--navy);font-size:17px;}
+  .challenge-card .ctx small{display:block;color:var(--mut);font-size:12.5px;margin-top:3px;line-height:1.45;}
+  .challenge-card button{margin-top:13px;background:var(--amber);color:#2f2a20;border:none;border-radius:12px;
+       width:100%;padding:12px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;}
 
   /* 防骗陪练 */
   .drill-scene-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
@@ -248,11 +279,13 @@
 
   <!-- 身份选择入口 -->
   <div class="entry on" id="entry">
+    <div class="entry-mark">☎️</div>
+    <div class="eyebrow">给爸妈的防骗陪练</div>
     <div class="logo">省心扫</div>
-    <div class="slogan">老人的数字世界代办管家<br>防骗 · 缴费 · 点餐，开口说 / 扫一下就行</div>
-    <button class="role" onclick="chooseRole('senior')"><span class="e">👴</span><span>我是长辈<small>拍照 / 说话，帮我办事、防骗</small></span></button>
-    <button class="role" onclick="chooseRole('child')"><span class="e">👨‍👩‍👧</span><span>我是子女<small>远程守护、兜底核验</small></span></button>
-    <div class="foot">演示版 · 进去后可随时切换身份</div>
+    <div class="slogan">模拟真实诈骗来电<br>提前练会识别、挂断和求助</div>
+    <button class="role primary" onclick="startDrillFromEntry()"><span class="e">📞</span><span>我来练一次<small>接一通模拟电话，看看能不能识破骗局</small></span></button>
+    <button class="role secondary" onclick="chooseRole('child')"><span class="e">👨‍👩‍👧</span><span>我是子女<small>发给爸妈练习，查看成绩和风险提醒</small></span></button>
+    <div class="foot">演示版 · 模拟练习不会产生真实通话或扣费</div>
   </div>
 
         <div class="screen senior" id="seniorScreen">
@@ -264,20 +297,22 @@
           <div class="view active" id="s_home">
             <div class="s-head"><div class="s-hi">王大爷，您好 👋</div><div class="s-date">7月6日 星期一</div></div>
             <div class="chatbubble" id="s_care"></div>
-            <div class="big-btn" onclick="sheet(true)">
-              <div class="cam">📷</div><div class="t">扫一扫 / 说一句</div>
-              <div class="sub">要办什么，扫一下就行</div>
+            <div class="big-btn drill-home" onclick="go('seniorScreen','s_drill_pick')">
+              <div class="cam">📞</div><div class="t">接一次模拟诈骗电话</div>
+              <div class="sub">提前练一遍，真遇上时心里更有底</div>
             </div>
+            <div class="s-safe-tip"><span>🛡️</span><span><b>拿不准，就先挂断。</b><br>再打给家人或官方电话核实。</span></div>
             <div id="s_reminders"></div>
+            <div class="s-section">日常帮忙</div>
+            <div class="s-row" onclick="sheet(true)">
+              <div class="ic">📷</div>
+              <div class="tx">扫一扫 / 说一句<small>防骗、点餐、缴费，告诉管家就行</small></div>
+              <span class="pill g" style="margin-left:auto">帮我</span>
+            </div>
             <div class="s-row" onclick="go('seniorScreen','s_explain_input')">
               <div class="ic">❓</div>
               <div class="tx">帮我问问<small>看不懂的通知/账单，拍给管家翻译</small></div>
               <span class="pill a" style="margin-left:auto">问</span>
-            </div>
-            <div class="s-row" onclick="go('seniorScreen','s_drill_pick')">
-              <div class="ic">🎯</div>
-              <div class="tx">防骗陪练<small>跟AI演练，练出识骗本领</small></div>
-              <span class="pill a" style="margin-left:auto">练一练</span>
             </div>
             <div class="s-row" onclick="go('seniorScreen','s_pay')">
               <div class="ic">💡</div>
@@ -400,10 +435,11 @@
           <div class="view" id="s_drill_pick">
             <div class="appbar"><span class="back" onclick="go('seniorScreen','s_home')">‹</span><h2>防骗陪练</h2></div>
             <div class="pad" style="padding-top:0;">
-              <p style="text-align:center;font-size:16px;color:var(--mut);margin:0 0 16px;">选一个场景，AI会模拟骗子来电，你来识破</p>
+              <p style="text-align:center;font-size:17px;color:var(--navy);font-weight:700;margin:0 0 7px;">选一个骗局，接通模拟电话</p>
+              <p style="text-align:center;font-size:14px;color:var(--mut);margin:0 0 14px;">记住：拿不准，先挂断，再找家人核实</p>
               <div class="drill-scene-grid" id="drillSceneGrid"></div>
               <button class="btn btn-primary" id="drillStartBtn" onclick="drillStart()" disabled style="opacity:.5;">模拟来电</button>
-              <p class="muted" style="text-align:center;margin-top:10px;">练完会告诉你哪里做得好、哪里要注意</p>
+              <p class="muted" style="text-align:center;margin-top:10px;">这是防骗练习，不会产生真实通话或扣费</p>
             </div>
           </div>
 
@@ -431,7 +467,7 @@
 
           <!-- 来电模拟覆盖层 -->
           <div class="drill-incoming" id="drillIncoming">
-            <div class="inc-label">来 电</div>
+            <div class="inc-label">防骗练习 · 模拟来电</div>
             <div class="inc-avatar" id="drillIncAvatar">🏦</div>
             <div class="inc-number" id="drillIncNumber">95588****</div>
             <div class="inc-tag" id="drillIncTag">未知来电</div>
@@ -503,6 +539,10 @@
               <h2>爸妈今天，一切都好</h2></div>
             <div class="pad">
               <div id="c_verifySlot"></div>
+              <div class="challenge-card">
+                <div class="ctop"><span class="cic">📞</span><div class="ctx"><b>发给爸爸练一练</b><small>模拟一次真实诈骗来电，练习识别、挂断和求助</small></div></div>
+                <button onclick="startChildChallenge()">发起一次家庭防骗练习</button>
+              </div>
               <div class="stat-card" id="c_stats" onclick="buildShareCard()">
                 <div class="h"><span>🛡️ 本月防骗战绩</span><span>生成分享卡 ›</span></div>
                 <div class="big"><span>拦下诈骗 <b id="st_count">0</b> 次</span><span>避免损失 <b id="st_amt">¥0</b></span></div>
@@ -576,7 +616,7 @@
                   <div class="num"><b id="po_amt">¥0</b><small>避免损失</small></div>
                 </div>
                 <div class="list" id="po_list"></div>
-                <div class="foot">省心扫 · 老人的数字世界代办管家<br>让爸妈不必追赶这个时代</div>
+                <div class="foot">省心扫 · 给爸妈的防骗陪练<br>先练一次，真遇上时心里更有底</div>
               </div>
               <button class="btn btn-primary" style="margin-top:14px;" onclick="copyShareText()">复制分享文案</button>
               <p class="muted" style="text-align:center;margin-top:10px;">长按上面卡片保存图片，或截图发到家族群 👨‍👩‍👧‍👦</p>
@@ -600,6 +640,24 @@ function chooseRole(role){
   const s=document.getElementById('seniorScreen'),c=document.getElementById('childScreen');
   if(role==='senior'){s.classList.add('on');c.classList.remove('on');go('seniorScreen','s_home');}
   else{c.classList.add('on');s.classList.remove('on');go('childScreen','c_home');}
+}
+function startDrillFromEntry(){
+  chooseRole('senior');
+  go('seniorScreen','s_drill_pick');
+}
+async function startChildChallenge(){
+  const shareData={
+    title:'省心扫 · 给爸妈的防骗陪练',
+    text:'给你发来一次防骗练习：接一通模拟诈骗电话，练习识别、挂断和求助。',
+    url:location.origin+location.pathname
+  };
+  if(navigator.share){
+    try{await navigator.share(shareData);return;}catch(e){if(e&&e.name==='AbortError')return;}
+  }
+  try{
+    await navigator.clipboard.writeText(shareData.text+'\n'+shareData.url);
+    toast('childScreen','练习链接已复制，可以发给爸妈');
+  }catch(e){toast('childScreen','把当前页面链接发给爸妈就能开始练习');}
 }
 function backToEntry(){
   if(window.speechSynthesis)try{speechSynthesis.cancel();}catch(e){}
@@ -1233,12 +1291,24 @@ function drillRenderResult(data){
   if(typeof speak==='function')speak((data.verdict||'')+'。'+(data.encourage||''));
 }
 
-function drillShareResult(){
+async function drillShareResult(){
   const sc=DRILL_SCENARIOS.find(s=>s.id===drillState.scenario);
   const score=document.getElementById('drillScoreNum').textContent;
   const title=sc?sc.title:'防骗练习';
   if(typeof addRec==='function')addRec('🎯','防骗陪练完成','练了「'+title+'」，得分 '+score+' 分');
-  toast('seniorScreen','已告诉家人');
+  const shareData={
+    title:'省心扫 · 防骗练习成绩',
+    text:'我完成了「'+title+'」防骗练习，得了 '+score+' 分。你也来试试！',
+    url:location.origin+location.pathname
+  };
+  if(navigator.share){
+    try{await navigator.share(shareData);toast('seniorScreen','已告诉家人');return;}
+    catch(e){if(e&&e.name==='AbortError')return;}
+  }
+  try{
+    await navigator.clipboard.writeText(shareData.text+'\n'+shareData.url);
+    toast('seniorScreen','成绩和链接已复制，可以发给家人');
+  }catch(e){toast('seniorScreen','成绩已记入家人的守护记录');}
 }
 
 let drillRecog=null,drillMicOn=false;
