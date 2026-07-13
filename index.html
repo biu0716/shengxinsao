@@ -497,7 +497,7 @@
               <div class="call-user-said" id="drillUserSaid"></div>
             </div>
             <div class="call-input-row" id="drillInputRow">
-              <input id="drillInput" type="text" placeholder="打字回应..." autocomplete="off">
+              <input id="drillInput" type="text" placeholder="打字回应..." autocomplete="off" enterkeyhint="send" onkeydown="drillInputKeydown(event)">
               <button onclick="drillSend()">➤</button>
             </div>
             <div class="call-bar" id="drillCallBar">
@@ -1461,6 +1461,12 @@ function drillSend(){
   document.getElementById('drillInputRow').classList.remove('on');
   document.getElementById('drillCallBar').style.display='';
   drillFetchReply();
+}
+
+function drillInputKeydown(event){
+  if(event.key!=='Enter'||event.isComposing||event.keyCode===229)return;
+  event.preventDefault();
+  drillSend();
 }
 
 function drillShowKeyboard(){
