@@ -1,6 +1,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const PORT = process.env.PORT || 8080;
 
@@ -137,6 +138,14 @@ const DRILL_SCENARIOS_SERVER = {
   gov_impersonation: "冒充公安/检察院，说老人涉嫌洗钱/诈骗案，要求配合调查并转移资金"
 };
 
+// 家庭挑战 MVP：使用随机链接在子女端和长辈端之间传递练习与成绩。
+// 当前为内存存储，服务重启后会清空；正式版可替换为数据库而不改变前端协议。
+const FAMILY_CHALLENGES = new Map();
+function publicChallenge(c) {
+  return { id:c.id,scenario:c.scenario,sender:c.sender,target:c.target,status:c.status,
+    createdAt:c.createdAt,completedAt:c.completedAt||null,result:c.result||null };
+}
+
 const DRILL_SCAMMER_SYS = `你是"省心扫"防骗陪练中扮演骗子的AI演员。你的任务是帮助老年人练习识别和拒绝诈骗。
 注意：这是教育场景，目的是让老人学会应对真实骗局。
 
@@ -203,6 +212,35 @@ const MENU_SYS = `你是"省心扫"里帮老人看懂餐厅菜单的管家。给
 
 const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") return send(res, 204, "");
+
+  if (req.method === "POST" && req.url === "/api/challenges") {
+    const body = await readBody(req);
+    if (!DRILL_SCENARIOS_SERVER[body.scenario]) return send(res, 400, { error:"unknown scenario" });
+    if (FAMILY_CHALLENGES.size >= 500) FAMILY_CHALLENGES.delete(FAMILY_CHALLENGES.keys().next().value);
+    const id = crypto.randomBytes(9).toString("base64url");
+    const challenge = { id,scenario:body.scenario,sender:String(body.sender||"家人").slice(0,12),
+      target:String(body.target||"长辈").slice(0,12),status:"pending",createdAt:Date.now(),result:null };
+    FAMILY_CHALLENGES.set(id,challenge);
+    return send(res, 201, publicChallenge(challenge));
+  }
+
+  const challengeRoute = req.url.match(/^\/api\/challenges\/([A-Za-z0-9_-]+)(\/complete)?$/);
+  if (challengeRoute && req.method === "GET" && !challengeRoute[2]) {
+    const challenge = FAMILY_CHALLENGES.get(challengeRoute[1]);
+    if (!challenge || Date.now()-challenge.createdAt > 30*86400000) return send(res, 404, { error:"challenge not found" });
+    return send(res, 200, publicChallenge(challenge));
+  }
+  if (challengeRoute && req.method === "POST" && challengeRoute[2] === "/complete") {
+    const challenge = FAMILY_CHALLENGES.get(challengeRoute[1]);
+    if (!challenge) return send(res, 404, { error:"challenge not found" });
+    const body = await readBody(req);
+    const score = Math.max(0,Math.min(100,Math.round(Number(body.score)||0)));
+    challenge.status="completed";challenge.completedAt=Date.now();
+    challenge.result={score,verdict:String(body.verdict||"练习完成").slice(0,120),
+      flags:Array.isArray(body.flags)?body.flags.slice(0,4).map(x=>String(x).slice(0,80)):[],
+      wellDone:Array.isArray(body.wellDone)?body.wellDone.slice(0,3).map(x=>String(x).slice(0,80)):[]};
+    return send(res, 200, publicChallenge(challenge));
+  }
 
   if (req.method === "POST" && req.url === "/api/fraud") {
     try {
@@ -291,7 +329,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   // static
-  let f = req.url === "/" ? "/index.html" : req.url.split("?")[0];
+  const pathname = req.url.split("?")[0];
+  let f = pathname === "/" ? "/index.html" : pathname;
   const fp = path.join(__dirname, f);
   if (fp.startsWith(__dirname) && fs.existsSync(fp) && fs.statSync(fp).isFile()) {
     const ext = path.extname(fp);

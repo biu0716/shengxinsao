@@ -151,6 +151,18 @@
   .challenge-card .ctx small{display:block;color:var(--mut);font-size:12.5px;margin-top:3px;line-height:1.45;}
   .challenge-card button{margin-top:13px;background:var(--amber);color:#2f2a20;border:none;border-radius:12px;
        width:100%;padding:12px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;}
+  .challenge-status{margin-top:12px;padding-top:12px;border-top:1px solid #efd8ae;font-size:13px;color:#6d5836;line-height:1.55;}
+  .challenge-status b{color:var(--navy);font-size:14px;}
+  .challenge-invite{text-align:center;padding:24px 20px 10px;}
+  .challenge-invite .ci-icon{width:92px;height:92px;border-radius:28px;background:#fff1d9;margin:0 auto 18px;
+       display:flex;align-items:center;justify-content:center;font-size:48px;box-shadow:0 8px 24px rgba(136,89,18,.12);}
+  .challenge-invite h1{font-size:25px;color:var(--navy);margin:0 0 8px;line-height:1.35;}
+  .challenge-invite .ci-from{font-size:15px;color:var(--mut);margin-bottom:20px;}
+  .challenge-invite .ci-scene{background:#fff;border-radius:18px;padding:17px;text-align:left;box-shadow:0 3px 14px rgba(30,56,100,.08);}
+  .challenge-invite .ci-scene b{display:block;font-size:19px;color:var(--navy);margin-bottom:5px;}
+  .challenge-created{display:none;background:#eaf7ef;border:1px solid #bfe6cf;border-radius:16px;padding:16px;margin-top:14px;}
+  .challenge-created.show{display:block;}
+  .challenge-created b{display:block;color:var(--green);font-size:17px;margin-bottom:5px;}
 
   /* 防骗陪练 */
   .drill-scene-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
@@ -443,6 +455,20 @@
           </div>
 
           <!-- 防骗陪练：场景选择 -->
+          <div class="view" id="s_challenge_invite">
+            <div class="challenge-invite">
+              <div class="ci-icon">📞</div>
+              <h1 id="challengeInviteTitle">家人给你发来一场防骗练习</h1>
+              <div class="ci-from" id="challengeInviteFrom">花两分钟，看看能不能识破骗局</div>
+              <div class="ci-scene"><b id="challengeInviteScene">正在读取练习…</b><span id="challengeInviteDesc" class="muted"></span></div>
+            </div>
+            <div class="pad" style="padding-top:8px;">
+              <div class="s-safe-tip" style="margin:0 0 14px;"><span>🛡️</span><span>这是模拟练习，不会产生真实通话或扣费。拿不准就先挂断。</span></div>
+              <button class="btn btn-primary" id="challengeInviteStart" onclick="startInvitedChallenge()">准备好了，开始练习</button>
+              <button class="btn btn-ghost" style="margin-top:10px;" onclick="go('seniorScreen','s_home')">稍后再练</button>
+            </div>
+          </div>
+
           <div class="view" id="s_drill_pick">
             <div class="appbar"><span class="back" onclick="go('seniorScreen','s_home')">‹</span><h2>防骗陪练</h2></div>
             <div class="pad" style="padding-top:0;">
@@ -516,6 +542,7 @@
                 <b style="color:var(--green);font-size:16px;">你做得好的地方：</b>
                 <div id="drillWellList" style="margin-top:8px;font-size:16px;color:var(--ink);"></div>
               </div>
+              <div id="challengeResultNotice" class="card" style="display:none;background:#eaf2fb;color:var(--navy);font-weight:700;text-align:center;"></div>
               <button class="btn btn-primary" onclick="go('seniorScreen','s_drill_pick')">再练一个场景</button>
               <button class="btn btn-ghost" style="margin-top:10px;" onclick="drillShareResult()">把成绩告诉家人</button>
               <button class="btn btn-ghost" style="margin-top:10px;" onclick="go('seniorScreen','s_home')">回首页</button>
@@ -557,7 +584,8 @@
               <div id="c_verifySlot"></div>
               <div class="challenge-card">
                 <div class="ctop"><span class="cic">📞</span><div class="ctx"><b>发给爸爸练一练</b><small>模拟一次真实诈骗来电，练习识别、挂断和求助</small></div></div>
-                <button onclick="startChildChallenge()">发起一次家庭防骗练习</button>
+                <button onclick="startChildChallenge()">选择一个骗局</button>
+                <div class="challenge-status" id="c_challengeStatus" style="display:none;"></div>
               </div>
               <div class="stat-card" id="c_stats" onclick="buildShareCard()">
                 <div class="h"><span>🛡️ 本月防骗战绩</span><span>生成分享卡 ›</span></div>
@@ -578,6 +606,23 @@
               <div class="sec-title">已配置</div>
               <div class="card muted" style="margin:0;">✓ 支付方式已绑　✓ 电费户号已绑　✓ 自主额度 50 元
                 <div style="margin-top:6px;">超过 50 元或可疑交易，都会推给你确认。</div></div>
+            </div>
+          </div>
+
+          <!-- 发起家庭防骗挑战 -->
+          <div class="view" id="c_challenge_new">
+            <div class="appbar"><span class="back" onclick="go('childScreen','c_home')">‹</span><h2>发给爸爸练一练</h2></div>
+            <div class="pad" style="padding-top:0;">
+              <p style="text-align:center;font-size:16px;color:var(--navy);font-weight:700;margin:0 0 6px;">这次想让爸爸练哪一种骗局？</p>
+              <p class="muted" style="text-align:center;margin:0 0 15px;">生成专属链接，练完后成绩会回到这里</p>
+              <div class="drill-scene-grid" id="childChallengeGrid"></div>
+              <button class="btn btn-primary" id="childChallengeCreateBtn" onclick="createFamilyChallenge()" disabled style="opacity:.5;">生成练习链接</button>
+              <div class="challenge-created" id="challengeCreatedBox">
+                <b>✓ 练习链接已生成</b>
+                <div class="muted" id="challengeCreatedText">发给爸爸，点击后会直接进入这次练习。</div>
+                <button class="btn btn-primary" style="margin-top:13px;" onclick="shareCreatedChallenge()">发给爸爸</button>
+                <button class="btn btn-ghost" style="margin-top:9px;" onclick="copyCreatedChallenge()">复制链接</button>
+              </div>
             </div>
           </div>
 
@@ -655,25 +700,17 @@ function chooseRole(role){
   document.getElementById('entry').classList.remove('on');
   const s=document.getElementById('seniorScreen'),c=document.getElementById('childScreen');
   if(role==='senior'){s.classList.add('on');c.classList.remove('on');go('seniorScreen','s_home');}
-  else{c.classList.add('on');s.classList.remove('on');go('childScreen','c_home');}
+  else{c.classList.add('on');s.classList.remove('on');go('childScreen','c_home');refreshFamilyChallenges();}
 }
 function startDrillFromEntry(){
   chooseRole('senior');
   go('seniorScreen','s_drill_pick');
 }
-async function startChildChallenge(){
-  const shareData={
-    title:'省心扫 · 给爸妈的防骗陪练',
-    text:'给你发来一次防骗练习：接一通模拟诈骗电话，练习识别、挂断和求助。',
-    url:location.origin+location.pathname
-  };
-  if(navigator.share){
-    try{await navigator.share(shareData);return;}catch(e){if(e&&e.name==='AbortError')return;}
-  }
-  try{
-    await navigator.clipboard.writeText(shareData.text+'\n'+shareData.url);
-    toast('childScreen','练习链接已复制，可以发给爸妈');
-  }catch(e){toast('childScreen','把当前页面链接发给爸妈就能开始练习');}
+function startChildChallenge(){
+  childChallengeSelected=null;createdChallenge=null;
+  document.getElementById('challengeCreatedBox').classList.remove('show');
+  renderChildChallengePicker();
+  go('childScreen','c_challenge_new');
 }
 function backToEntry(){
   if(window.speechSynthesis)try{speechSynthesis.cancel();}catch(e){}
@@ -818,7 +855,11 @@ window.addEventListener('DOMContentLoaded',()=>{
   loadRem();renderRem();
   loadBlocks();renderStats();
   drillRenderPicker();
+  renderChildChallengePicker();
+  refreshFamilyChallenges();
+  loadIncomingChallenge();
   setInterval(checkReminders,20000);
+  setInterval(refreshFamilyChallenges,15000);
 });
 
 // ===== 防骗战绩 =====
@@ -1157,8 +1198,130 @@ const DRILL_SCENARIOS=[
   {id:'health_product',emoji:'💊',title:'保健品推销',desc:'限时折扣、治百病',phone:'400-156-****',tag:'健康咨询'},
   {id:'gov_impersonation',emoji:'👮',title:'冒充公检法',desc:'涉嫌犯罪、转移资金',phone:'010-6652****',tag:'公安局'}
 ];
+let childChallengeSelected=null,createdChallenge=null;
+
+function renderChildChallengePicker(){
+  const grid=document.getElementById('childChallengeGrid');
+  if(!grid)return;
+  grid.innerHTML=DRILL_SCENARIOS.map(s=>
+    '<div class="drill-scene-card" data-id="'+s.id+'" onclick="selectChildChallenge(\''+s.id+'\',this)">'+
+    '<span class="dse">'+s.emoji+'</span><div class="dst">'+s.title+'</div><div class="dss">'+s.desc+'</div></div>'
+  ).join('');
+  const btn=document.getElementById('childChallengeCreateBtn');
+  btn.disabled=true;btn.style.opacity='.5';btn.textContent='生成练习链接';
+}
+
+function selectChildChallenge(id,el){
+  childChallengeSelected=id;
+  document.querySelectorAll('#childChallengeGrid .drill-scene-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const btn=document.getElementById('childChallengeCreateBtn');
+  btn.disabled=false;btn.style.opacity='1';
+  document.getElementById('challengeCreatedBox').classList.remove('show');
+}
+
+function rememberChallenge(id){
+  let ids=[];
+  try{ids=JSON.parse(localStorage.getItem('sxs_family_challenges')||'[]');}catch(e){}
+  ids=[id,...ids.filter(x=>x!==id)].slice(0,10);
+  try{localStorage.setItem('sxs_family_challenges',JSON.stringify(ids));}catch(e){}
+}
+
+function savedChallengeIds(){
+  try{const ids=JSON.parse(localStorage.getItem('sxs_family_challenges')||'[]');return Array.isArray(ids)?ids:[];}
+  catch(e){return [];}
+}
+
+async function createFamilyChallenge(){
+  if(!childChallengeSelected)return;
+  const btn=document.getElementById('childChallengeCreateBtn');
+  btn.disabled=true;btn.style.opacity='.6';btn.textContent='正在生成…';
+  try{
+    const resp=await fetch('/api/challenges',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({scenario:childChallengeSelected,sender:'女儿',target:'爸爸'})});
+    const data=await resp.json();
+    if(!resp.ok||data.error)throw new Error(data.error||'create failed');
+    const u=new URL(location.origin+location.pathname);u.searchParams.set('challenge',data.id);
+    createdChallenge={...data,url:u.toString()};rememberChallenge(data.id);
+    const sc=DRILL_SCENARIOS.find(s=>s.id===data.scenario);
+    document.getElementById('challengeCreatedText').textContent='已生成「'+(sc?sc.title:'防骗')+'」练习，发给爸爸后可以在子女端查看成绩。';
+    document.getElementById('challengeCreatedBox').classList.add('show');
+    btn.textContent='重新生成链接';btn.disabled=false;btn.style.opacity='1';
+    refreshFamilyChallenges();
+  }catch(e){
+    btn.textContent='生成练习链接';btn.disabled=false;btn.style.opacity='1';
+    toast('childScreen','链接生成失败，请稍后再试');
+  }
+}
+
+async function shareCreatedChallenge(){
+  if(!createdChallenge)return;
+  const sc=DRILL_SCENARIOS.find(s=>s.id===createdChallenge.scenario);
+  const shareData={title:'省心扫 · 家庭防骗练习',
+    text:'爸爸，我给你发来一场「'+(sc?sc.title:'防骗')+'」练习。点开接一次模拟电话，练完我就能看到成绩。',
+    url:createdChallenge.url};
+  if(navigator.share){
+    try{await navigator.share(shareData);return;}catch(e){if(e&&e.name==='AbortError')return;}
+  }
+  await copyCreatedChallenge();
+}
+
+async function copyCreatedChallenge(){
+  if(!createdChallenge)return;
+  try{await navigator.clipboard.writeText(createdChallenge.url);toast('childScreen','练习链接已复制，可以发给爸爸');}
+  catch(e){toast('childScreen','长按地址栏复制当前练习链接');}
+}
+
+async function refreshFamilyChallenges(){
+  const box=document.getElementById('c_challengeStatus');
+  if(!box)return;
+  const ids=savedChallengeIds();
+  if(!ids.length){box.style.display='none';return;}
+  try{
+    const resp=await fetch('/api/challenges/'+encodeURIComponent(ids[0]),{cache:'no-store'});
+    const ch=await resp.json();
+    if(!resp.ok||ch.error)throw new Error();
+    const sc=DRILL_SCENARIOS.find(s=>s.id===ch.scenario);
+    box.style.display='block';
+    if(ch.status==='completed'&&ch.result){
+      box.innerHTML='<b>爸爸已完成 · '+Number(ch.result.score||0)+' 分</b><br>'+esc(sc?sc.title:'防骗练习')+'：'+esc(ch.result.verdict||'练习完成');
+    }else{
+      box.innerHTML='<b>等待爸爸完成</b><br>已发送「'+esc(sc?sc.title:'防骗练习')+'」，完成后成绩会显示在这里。';
+    }
+  }catch(e){box.style.display='block';box.innerHTML='<b>上次练习已过期</b><br>可以重新选择一个骗局发给爸爸。';}
+}
+
+async function loadIncomingChallenge(){
+  const id=new URLSearchParams(location.search).get('challenge');
+  if(!id)return;
+  try{
+    const resp=await fetch('/api/challenges/'+encodeURIComponent(id),{cache:'no-store'});
+    const ch=await resp.json();
+    if(!resp.ok||ch.error)throw new Error();
+    const sc=DRILL_SCENARIOS.find(s=>s.id===ch.scenario);
+    if(!sc)throw new Error();
+    drillState.scenario=sc.id;drillState.challengeId=id;drillState.challengeSubmitted=false;
+    document.getElementById('challengeInviteTitle').textContent=(ch.sender||'家人')+'给你发来一场防骗练习';
+    document.getElementById('challengeInviteFrom').textContent='练完后，成绩会自动告诉'+(ch.sender||'家人');
+    document.getElementById('challengeInviteScene').textContent=sc.emoji+' '+sc.title;
+    document.getElementById('challengeInviteDesc').textContent=sc.desc;
+    document.getElementById('entry').classList.remove('on');
+    document.getElementById('childScreen').classList.remove('on');
+    document.getElementById('seniorScreen').classList.add('on');
+    go('seniorScreen','s_challenge_invite');
+  }catch(e){
+    chooseRole('senior');toast('seniorScreen','这条练习链接已过期，请让家人重新发送');
+  }
+}
+
+function startInvitedChallenge(){
+  if(!drillState.challengeId||!drillState.scenario)return;
+  drillState.challengeSubmitted=false;
+  drillStart();
+}
+
 let drillState={scenario:null,history:[],round:0,ended:false,loading:false,timerInterval:null,seconds:0,
-  mockSmsShown:false,mockCode:'',mockSmsTimer:null};
+  mockSmsShown:false,mockCode:'',mockSmsTimer:null,challengeId:null,challengeSubmitted:false};
 
 function drillRenderPicker(){
   const grid=document.getElementById('drillSceneGrid');
@@ -1171,6 +1334,7 @@ function drillRenderPicker(){
 
 function drillSelectScenario(id,el){
   drillState.scenario=id;
+  drillState.challengeId=null;drillState.challengeSubmitted=false;
   document.querySelectorAll('.drill-scene-card').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
   const btn=document.getElementById('drillStartBtn');
@@ -1182,6 +1346,8 @@ function drillStart(){
   drillState.history=[];drillState.round=0;drillState.ended=false;drillState.loading=false;
   drillState.mockSmsShown=false;drillState.mockCode='';
   drillHideMockSms();
+  const notice=document.getElementById('challengeResultNotice');
+  notice.style.display='none';notice.textContent='';
   const sc=DRILL_SCENARIOS.find(s=>s.id===drillState.scenario);
   document.getElementById('drillIncAvatar').textContent=sc.emoji;
   document.getElementById('drillIncNumber').textContent=sc.phone;
@@ -1332,6 +1498,27 @@ function drillRenderResult(data){
   document.getElementById('drillFlagList').innerHTML=(data.flags||[]).map(f=>'<div>🚩 '+esc(f)+'</div>').join('');
   document.getElementById('drillWellList').innerHTML=(data.wellDone||[]).map(w=>'<div style="padding:4px 0;">✅ '+esc(w)+'</div>').join('');
   if(typeof speak==='function')speak((data.verdict||'')+'。'+(data.encourage||''));
+  drillSubmitChallengeResult(data);
+}
+
+async function drillSubmitChallengeResult(data){
+  if(!drillState.challengeId||drillState.challengeSubmitted)return;
+  drillState.challengeSubmitted=true;
+  const notice=document.getElementById('challengeResultNotice');
+  notice.style.display='block';notice.textContent='正在把成绩告诉家人…';
+  try{
+    const resp=await fetch('/api/challenges/'+encodeURIComponent(drillState.challengeId)+'/complete',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        score:Number(data.score||0),verdict:data.verdict||'练习完成',flags:data.flags||[],wellDone:data.wellDone||[]
+      })
+    });
+    const out=await resp.json();
+    if(!resp.ok||out.error)throw new Error();
+    notice.textContent='✓ 成绩已自动告诉家人';
+  }catch(e){
+    drillState.challengeSubmitted=false;
+    notice.textContent='成绩暂时没传出去，可以点“把成绩告诉家人”分享';
+  }
 }
 
 async function drillShareResult(){
