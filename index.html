@@ -1269,7 +1269,15 @@ async function shareCreatedChallenge(){
 async function copyCreatedChallenge(){
   if(!createdChallenge)return;
   try{await navigator.clipboard.writeText(createdChallenge.url);toast('childScreen','练习链接已复制，可以发给爸爸');}
-  catch(e){toast('childScreen','长按地址栏复制当前练习链接');}
+  catch(e){
+    const input=document.createElement('textarea');
+    input.value=createdChallenge.url;input.setAttribute('readonly','');
+    input.style.cssText='position:fixed;left:-9999px;opacity:0;';
+    document.body.appendChild(input);input.select();
+    let copied=false;try{copied=document.execCommand('copy');}catch(err){}
+    input.remove();
+    toast('childScreen',copied?'练习链接已复制，可以发给爸爸':'复制失败，请点“发给爸爸”使用系统分享');
+  }
 }
 
 async function refreshFamilyChallenges(){
@@ -1321,7 +1329,7 @@ function startInvitedChallenge(){
 }
 
 let drillState={scenario:null,history:[],round:0,ended:false,loading:false,timerInterval:null,seconds:0,
-  mockSmsShown:false,mockCode:'',mockSmsTimer:null,challengeId:null,challengeSubmitted:false};
+  mockSmsShown:false,mockCode:'',mockSmsDelayTimer:null,mockSmsTimer:null,challengeId:null,challengeSubmitted:false};
 
 function drillRenderPicker(){
   const grid=document.getElementById('drillSceneGrid');
@@ -1398,7 +1406,8 @@ function drillMaybeShowMockSms(reply){
   if(drillState.scenario!=='fake_bank'||drillState.mockSmsShown||!/验证码|短信/.test(reply))return;
   drillState.mockSmsShown=true;
   drillState.mockCode=String(Math.floor(100000+Math.random()*900000));
-  setTimeout(()=>{
+  drillState.mockSmsDelayTimer=setTimeout(()=>{
+    drillState.mockSmsDelayTimer=null;
     if(drillState.ended)return;
     document.getElementById('drillMockCode').textContent=drillState.mockCode;
     document.getElementById('drillMockSms').classList.add('show');
@@ -1412,6 +1421,7 @@ function drillMaybeShowMockSms(reply){
 function drillHideMockSms(){
   const el=document.getElementById('drillMockSms');
   if(el)el.classList.remove('show');
+  if(drillState.mockSmsDelayTimer){clearTimeout(drillState.mockSmsDelayTimer);drillState.mockSmsDelayTimer=null;}
   if(drillState.mockSmsTimer){clearTimeout(drillState.mockSmsTimer);drillState.mockSmsTimer=null;}
 }
 
