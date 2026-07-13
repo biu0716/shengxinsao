@@ -127,6 +127,69 @@ const EXPLAIN_SYS = `你是"省心扫"里帮老人看懂各种通知、账单、
 }
 判断规则：涉及转账/验证码/点链接/催促紧迫感/中奖退款，risk必须标"可疑"且needChild=true；普通账单/通知标"无风险"；有歧义的标"需注意"+needChild=true。`;
 
+// ---- 防骗陪练 ----
+const DRILL_SCENARIOS_SERVER = {
+  fake_bank: "冒充中国银行客服，说账户有异常/被盗用，要求提供验证码或转账到'安全账户'",
+  lottery: "冒充节目组/商场，称老人中了大奖，要先交'个人所得税'或'手续费'才能领取",
+  fake_grandchild: "冒充老人的孙子/孙女，说手机坏了换了新号，急需借钱交学费/医疗费",
+  fake_delivery: "冒充快递员，说包裹有问题/涉及违禁品，让老人配合'公安'验证身份",
+  health_product: "冒充健康顾问，推销能'治百病'的保健品，要求现在就汇款享受'限时折扣'",
+  gov_impersonation: "冒充公安/检察院，说老人涉嫌洗钱/诈骗案，要求配合调查并转移资金"
+};
+
+const DRILL_SCAMMER_SYS = `你是"省心扫"防骗陪练中扮演骗子的AI演员。你的任务是帮助老年人练习识别和拒绝诈骗。
+注意：这是教育场景，目的是让老人学会应对真实骗局。
+
+扮演规则：
+1. 完全进入指定诈骗场景角色，台词逼真但不要包含真实可用的账号/链接/验证码
+2. 语气：有一定紧迫感和权威感，符合真实骗子的惯用话术
+3. 每次回复只说1-3句话，像电话/短信那样简短
+4. 若用户明确拒绝或质疑，升级话术（假装更有权威、更紧迫）再试一次
+5. 若用户说"挂了""不信""你是骗子"或类似明确拒绝的话，shouldEnd设为true
+6. 若已经是第5轮对话，shouldEnd设为true
+
+只输出JSON：{"reply":"骗子说的话，口语，1-3句","shouldEnd":false}`;
+
+const DRILL_SCORE_SYS = `你是"省心扫"防骗陪练的评分老师。你刚才看完了一段老人和AI骗子的对话练习。请客观评价老人的表现，给出鼓励性反馈。
+
+评分标准（满分100）：
+- 识别骗局：早识别+40，晚识别+20，完全没识别0
+- 拒绝行动：明确挂断/拒绝+30，犹豫但最终拒绝+15，没有拒绝0
+- 应对话术：反问/核实身份+20，直接质疑+10，全程顺着骗子0
+- 情绪稳定：没有恐慌+10，有一点恐慌+5
+
+只输出JSON：
+{
+  "score": 整数0到100,
+  "verdict": "一句话总结表现",
+  "flags": ["应该注意的骗局特征，每条不超过20字，2-4条"],
+  "wellDone": ["老人做得好的地方，每条不超过20字，1-3条"],
+  "encourage": "一句温暖的鼓励话，口语"
+}`;
+
+async function askJSONChat(system, userContent) {
+  const r = await fetch(LLM_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LLM_KEY}`, "Content-Type": "application/json", "Accept-Encoding": "identity" },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userContent },
+      ],
+      max_tokens: 600,
+      temperature: 0.7,
+    }),
+  });
+  if (!r.ok) { const t = await r.text(); throw new Error(`gateway ${r.status}: ${t.slice(0, 300)}`); }
+  const data = await r.json();
+  let txt = data.choices?.[0]?.message?.content || "";
+  txt = txt.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  const s = txt.indexOf("{"), e = txt.lastIndexOf("}");
+  if (s >= 0 && e > s) txt = txt.slice(s, e + 1);
+  return JSON.parse(txt);
+}
+
 const MENU_SYS = `你是"省心扫"里帮老人看懂餐厅菜单的管家。给你一份杂乱的餐厅菜单文本，你要把它整理成老人易懂的极简版本。
 只输出 JSON，结构：
 {
@@ -190,6 +253,29 @@ const server = http.createServer(async (req, res) => {
         out = await askJSON(EXPLAIN_SYS, `老人看不懂这段内容，请帮他翻译成大白话：\n"""${(text || "").slice(0, 3000)}"""`);
       }
       return send(res, 200, out);
+    } catch (e) { return send(res, 500, { error: String(e.message || e) }); }
+  }
+
+  if (req.method === "POST" && req.url === "/api/drill") {
+    try {
+      const { scenario, history, phase } = await readBody(req);
+      if (!scenario || !phase) return send(res, 400, { error: "missing fields" });
+      const scenarioDesc = DRILL_SCENARIOS_SERVER[scenario] || "通用诈骗场景";
+
+      if (phase === "chat") {
+        const transcript = (history || []).map(m => (m.role === "assistant" ? "骗子" : "用户") + "：" + m.content).join("\n");
+        const userMsg = `场景：${scenarioDesc}\n\n${transcript ? "对话历史：\n" + transcript + "\n\n" : ""}请${transcript ? "继续扮演骗子，说下一句" : "说骗子的开场白（第一句话）"}。`;
+        const out = await askJSONChat(DRILL_SCAMMER_SYS, userMsg);
+        return send(res, 200, { reply: out.reply || "...", shouldEnd: !!out.shouldEnd });
+      }
+
+      if (phase === "score") {
+        const transcript = (history || []).map(m => (m.role === "assistant" ? "骗子" : "用户") + "：" + m.content).join("\n");
+        const out = await askJSON(DRILL_SCORE_SYS, `场景：${scenarioDesc}\n\n完整对话：\n${transcript}`);
+        return send(res, 200, out);
+      }
+
+      return send(res, 400, { error: "unknown phase" });
     } catch (e) { return send(res, 500, { error: String(e.message || e) }); }
   }
 

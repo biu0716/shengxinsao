@@ -121,6 +121,71 @@
   .kv:last-child{border:none;} .kv .k{color:var(--mut);} .kv .v{font-weight:700;}
   .risk{background:#fbe6e2;border-radius:10px;padding:10px 12px;color:#8a4433;font-size:13px;margin-top:10px;}
 
+  /* 防骗陪练 */
+  .drill-scene-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+  .drill-scene-card{background:#fff;border-radius:20px;padding:18px 14px;text-align:center;cursor:pointer;
+       border:2px solid var(--line);box-shadow:0 2px 8px rgba(28,53,87,.05);transition:.2s;}
+  .drill-scene-card:active,.drill-scene-card.active{border-color:var(--amber);background:#fdf8ef;}
+  .drill-scene-card .dse{font-size:36px;display:block;margin-bottom:8px;}
+  .drill-scene-card .dst{font-size:16px;font-weight:700;color:var(--navy);}
+  .drill-scene-card .dss{font-size:12px;color:var(--mut);margin-top:4px;}
+  .drill-score-ring{width:110px;height:110px;border-radius:50%;margin:0 auto;
+       background:conic-gradient(var(--score-color,var(--green)) var(--pct,0%), var(--line) var(--pct,0%));
+       display:flex;align-items:center;justify-content:center;position:relative;}
+  .drill-score-ring::before{content:"";position:absolute;inset:12px;background:var(--bg);border-radius:50%;}
+  .drill-score-ring b{font-size:36px;font-weight:900;color:var(--navy);position:relative;z-index:1;}
+  .drill-flag-list div{padding:6px 0;font-size:16px;color:var(--ink);border-bottom:1px solid var(--line);}
+  .drill-flag-list div:last-child{border:none;}
+  /* 来电模拟 */
+  .drill-incoming{position:absolute;inset:0;z-index:50;background:linear-gradient(180deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+       display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;}
+  .drill-incoming.on{display:flex;}
+  .drill-incoming .inc-label{font-size:14px;opacity:.7;letter-spacing:2px;margin-bottom:24px;}
+  .drill-incoming .inc-avatar{width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.12);
+       display:flex;align-items:center;justify-content:center;font-size:48px;position:relative;}
+  .drill-incoming .inc-avatar::after{content:"";position:absolute;inset:-10px;border-radius:50%;
+       border:2px solid rgba(255,255,255,.3);animation:inc-pulse 1.5s infinite;}
+  .drill-incoming .inc-avatar::before{content:"";position:absolute;inset:-22px;border-radius:50%;
+       border:1.5px solid rgba(255,255,255,.15);animation:inc-pulse 1.5s .3s infinite;}
+  @keyframes inc-pulse{0%{transform:scale(1);opacity:1;}100%{transform:scale(1.25);opacity:0;}}
+  .drill-incoming .inc-number{font-size:28px;font-weight:800;margin-top:20px;letter-spacing:1px;}
+  .drill-incoming .inc-tag{font-size:13px;opacity:.6;margin-top:8px;}
+  .drill-incoming .inc-btns{display:flex;gap:60px;margin-top:50px;}
+  .drill-incoming .inc-btn{width:72px;height:72px;border-radius:50%;border:none;font-size:30px;
+       cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,.3);}
+  .drill-incoming .inc-btn.decline{background:#e0553f;}
+  .drill-incoming .inc-btn.answer{background:#2fae66;animation:inc-ring .8s infinite alternate;}
+  @keyframes inc-ring{from{transform:scale(1);}to{transform:scale(1.08);}}
+  .drill-incoming .inc-btn-label{font-size:11px;color:rgba(255,255,255,.7);margin-top:8px;}
+  /* 通话界面 */
+  #s_drill_call{background:#1a1a2e;color:#fff;}
+  #s_drill_call.active{display:flex!important;flex-direction:column;}
+  .call-header{text-align:center;padding:30px 20px 10px;flex-shrink:0;}
+  .call-header .call-status{font-size:13px;color:rgba(255,255,255,.6);}
+  .call-header .call-timer{font-size:16px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums;}
+  .call-header .call-name{font-size:20px;font-weight:800;margin-top:12px;}
+  .call-subtitle-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 24px;}
+  .call-subtitle{font-size:22px;line-height:1.7;font-weight:600;text-align:center;color:#fff;
+       max-width:100%;transition:opacity .3s;}
+  .call-subtitle.loading{opacity:.4;font-size:16px;font-weight:400;}
+  .call-user-said{font-size:14px;color:rgba(255,255,255,.5);margin-top:16px;max-width:80%;text-align:center;}
+  .call-bar{display:flex;align-items:center;justify-content:center;gap:30px;padding:20px 20px 36px;flex-shrink:0;}
+  .call-bar .cb{width:64px;height:64px;border-radius:50%;border:none;font-size:26px;cursor:pointer;
+       display:flex;align-items:center;justify-content:center;flex-direction:column;}
+  .call-bar .cb-mic{background:rgba(255,255,255,.15);color:#fff;}
+  .call-bar .cb-mic.listening{background:#2fae66;animation:cb-glow 1s infinite alternate;}
+  @keyframes cb-glow{from{box-shadow:0 0 0 rgba(47,174,102,0);}to{box-shadow:0 0 20px rgba(47,174,102,.5);}}
+  .call-bar .cb-kbd{background:rgba(255,255,255,.15);color:#fff;}
+  .call-bar .cb-hangup{background:#e0553f;color:#fff;width:72px;height:72px;font-size:30px;}
+  .call-bar .cb small{font-size:10px;margin-top:3px;opacity:.7;}
+  .call-input-row{display:none;padding:10px 16px 24px;gap:10px;flex-shrink:0;align-items:center;}
+  .call-input-row.on{display:flex;}
+  .call-input-row input{flex:1;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+       border-radius:24px;padding:12px 16px;font-size:16px;color:#fff;font-family:inherit;outline:none;}
+  .call-input-row input::placeholder{color:rgba(255,255,255,.4);}
+  .call-input-row button{background:#2e5496;color:#fff;border:none;border-radius:50%;width:44px;height:44px;
+       font-size:18px;cursor:pointer;flex-shrink:0;}
+
   .toast{position:absolute;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
        background:rgba(31,39,51,.94);color:#fff;padding:12px 18px;border-radius:14px;font-size:14px;
        opacity:0;transition:.35s;pointer-events:none;max-width:82%;text-align:center;z-index:30;}
@@ -208,6 +273,11 @@
               <div class="ic">❓</div>
               <div class="tx">帮我问问<small>看不懂的通知/账单，拍给管家翻译</small></div>
               <span class="pill a" style="margin-left:auto">问</span>
+            </div>
+            <div class="s-row" onclick="go('seniorScreen','s_drill_pick')">
+              <div class="ic">🎯</div>
+              <div class="tx">防骗陪练<small>跟AI演练，练出识骗本领</small></div>
+              <span class="pill a" style="margin-left:auto">练一练</span>
             </div>
             <div class="s-row" onclick="go('seniorScreen','s_pay')">
               <div class="ic">💡</div>
@@ -323,6 +393,80 @@
               <div id="explain_risk_box" style="display:none;" class="card" style="background:#fbe6e2;"></div>
               <div class="voice" id="explain_voice"><span class="ic">🔊</span><span id="explain_advice">…</span></div>
               <button class="btn btn-ghost" style="margin-top:6px;" onclick="go('seniorScreen','s_home')">好，我知道了</button>
+            </div>
+          </div>
+
+          <!-- 防骗陪练：场景选择 -->
+          <div class="view" id="s_drill_pick">
+            <div class="appbar"><span class="back" onclick="go('seniorScreen','s_home')">‹</span><h2>防骗陪练</h2></div>
+            <div class="pad" style="padding-top:0;">
+              <p style="text-align:center;font-size:16px;color:var(--mut);margin:0 0 16px;">选一个场景，AI会模拟骗子来电，你来识破</p>
+              <div class="drill-scene-grid" id="drillSceneGrid"></div>
+              <button class="btn btn-primary" id="drillStartBtn" onclick="drillStart()" disabled style="opacity:.5;">模拟来电</button>
+              <p class="muted" style="text-align:center;margin-top:10px;">练完会告诉你哪里做得好、哪里要注意</p>
+            </div>
+          </div>
+
+          <!-- 防骗陪练：通话界面 -->
+          <div class="view" id="s_drill_call">
+            <div class="call-header">
+              <div class="call-status">通话中...</div>
+              <div class="call-timer" id="drillTimer">00:00</div>
+              <div class="call-name" id="drillCallName">未知号码</div>
+            </div>
+            <div class="call-subtitle-area">
+              <div class="call-subtitle" id="drillSubtitle">对方正在说话...</div>
+              <div class="call-user-said" id="drillUserSaid"></div>
+            </div>
+            <div class="call-input-row" id="drillInputRow">
+              <input id="drillInput" type="text" placeholder="打字回应..." autocomplete="off">
+              <button onclick="drillSend()">➤</button>
+            </div>
+            <div class="call-bar" id="drillCallBar">
+              <button class="cb cb-mic" id="drillMicBtn" onclick="drillToggleMic()">🎤<small>语音</small></button>
+              <button class="cb cb-kbd" onclick="drillShowKeyboard()">⌨<small>打字</small></button>
+              <button class="cb cb-hangup" onclick="drillHangUp()">📵</button>
+            </div>
+          </div>
+
+          <!-- 来电模拟覆盖层 -->
+          <div class="drill-incoming" id="drillIncoming">
+            <div class="inc-label">来 电</div>
+            <div class="inc-avatar" id="drillIncAvatar">🏦</div>
+            <div class="inc-number" id="drillIncNumber">95588****</div>
+            <div class="inc-tag" id="drillIncTag">未知来电</div>
+            <div class="inc-btns">
+              <div style="text-align:center;">
+                <button class="inc-btn decline" onclick="drillDecline()">✕</button>
+                <div class="inc-btn-label">拒接</div>
+              </div>
+              <div style="text-align:center;">
+                <button class="inc-btn answer" onclick="drillAnswer()">✓</button>
+                <div class="inc-btn-label">接听</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 防骗陪练：结果 -->
+          <div class="view" id="s_drill_result">
+            <div class="appbar"><span class="back" onclick="go('seniorScreen','s_drill_pick')">‹</span><h2>练习结果</h2></div>
+            <div class="pad" style="padding-top:0;">
+              <div style="text-align:center;padding:20px 0 16px;">
+                <div class="drill-score-ring" id="drillScoreRing"><b id="drillScoreNum">--</b></div>
+                <div id="drillVerdict" style="font-size:22px;font-weight:800;margin-top:16px;color:var(--navy);">...</div>
+                <div id="drillEncourage" class="muted" style="margin-top:6px;font-size:16px;">...</div>
+              </div>
+              <div class="card" id="drillFlagsCard">
+                <b style="color:var(--red);font-size:16px;">应该注意这些骗局特征：</b>
+                <div class="drill-flag-list" id="drillFlagList" style="margin-top:10px;"></div>
+              </div>
+              <div class="card" style="background:#e4f6ec;">
+                <b style="color:var(--green);font-size:16px;">你做得好的地方：</b>
+                <div id="drillWellList" style="margin-top:8px;font-size:16px;color:var(--ink);"></div>
+              </div>
+              <button class="btn btn-primary" onclick="go('seniorScreen','s_drill_pick')">再练一个场景</button>
+              <button class="btn btn-ghost" style="margin-top:10px;" onclick="drillShareResult()">把成绩告诉家人</button>
+              <button class="btn btn-ghost" style="margin-top:10px;" onclick="go('seniorScreen','s_home')">回首页</button>
             </div>
           </div>
 
@@ -599,6 +743,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   });
   loadRem();renderRem();
   loadBlocks();renderStats();
+  drillRenderPicker();
   setInterval(checkReminders,20000);
 });
 
@@ -927,6 +1072,205 @@ function addRec(ic,title,desc){
   const d=document.createElement('div');d.className='rec';
   d.innerHTML='<span class="ic">'+ic+'</span><div class="info"><b>'+esc(title)+'</b><div>'+esc(desc)+'</div></div>';
   box.prepend(d);
+}
+
+// ===== 防骗陪练（来电模拟版） =====
+const DRILL_SCENARIOS=[
+  {id:'fake_bank',emoji:'🏦',title:'冒充银行客服',desc:'账户异常、要验证码',phone:'95588 ****',tag:'银行客服'},
+  {id:'lottery',emoji:'🎁',title:'中奖诈骗',desc:'先交税才能领奖金',phone:'400-832-****',tag:'活动通知'},
+  {id:'fake_grandchild',emoji:'👦',title:'冒充孙子孙女',desc:'换了新号、急需借钱',phone:'138 **** 7762',tag:'未存号码'},
+  {id:'fake_delivery',emoji:'📦',title:'冒充快递员',desc:'包裹问题、配合调查',phone:'0571-8832****',tag:'快递来电'},
+  {id:'health_product',emoji:'💊',title:'保健品推销',desc:'限时折扣、治百病',phone:'400-156-****',tag:'健康咨询'},
+  {id:'gov_impersonation',emoji:'👮',title:'冒充公检法',desc:'涉嫌犯罪、转移资金',phone:'010-6652****',tag:'公安局'}
+];
+let drillState={scenario:null,history:[],round:0,ended:false,loading:false,timerInterval:null,seconds:0};
+
+function drillRenderPicker(){
+  const grid=document.getElementById('drillSceneGrid');
+  if(!grid)return;
+  grid.innerHTML=DRILL_SCENARIOS.map(s=>
+    '<div class="drill-scene-card" onclick="drillSelectScenario(\''+s.id+'\',this)">'+
+    '<span class="dse">'+s.emoji+'</span><div class="dst">'+s.title+'</div><div class="dss">'+s.desc+'</div></div>'
+  ).join('');
+}
+
+function drillSelectScenario(id,el){
+  drillState.scenario=id;
+  document.querySelectorAll('.drill-scene-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const btn=document.getElementById('drillStartBtn');
+  btn.disabled=false;btn.style.opacity='1';
+}
+
+function drillStart(){
+  if(!drillState.scenario)return;
+  drillState.history=[];drillState.round=0;drillState.ended=false;drillState.loading=false;
+  const sc=DRILL_SCENARIOS.find(s=>s.id===drillState.scenario);
+  document.getElementById('drillIncAvatar').textContent=sc.emoji;
+  document.getElementById('drillIncNumber').textContent=sc.phone;
+  document.getElementById('drillIncTag').textContent=sc.tag;
+  document.getElementById('drillIncoming').classList.add('on');
+  if(navigator.vibrate)try{navigator.vibrate([200,100,200,100,200]);}catch(e){}
+}
+
+function drillDecline(){
+  document.getElementById('drillIncoming').classList.remove('on');
+  if(navigator.vibrate)try{navigator.vibrate(0);}catch(e){}
+  drillState.history.push({role:'user',content:'[用户直接拒接了来电，没有接听]'});
+  drillRenderResult({score:100,verdict:'太棒了！第一时间拒接陌生可疑电话',flags:['陌生号码来电不要轻易接听','银行/公安不会电话要求转账','接了也别慌，随时可以挂断'],wellDone:['第一时间拒接，防骗意识很强','没有给骗子任何机会'],encourage:'您的警觉性满分！继续保持，骗子拿您没办法！'});
+  go('seniorScreen','s_drill_result');
+}
+
+function drillAnswer(){
+  document.getElementById('drillIncoming').classList.remove('on');
+  if(navigator.vibrate)try{navigator.vibrate(0);}catch(e){}
+  const sc=DRILL_SCENARIOS.find(s=>s.id===drillState.scenario);
+  document.getElementById('drillCallName').textContent=sc.phone;
+  document.getElementById('drillSubtitle').textContent='对方正在说话...';
+  document.getElementById('drillSubtitle').classList.add('loading');
+  document.getElementById('drillUserSaid').textContent='';
+  document.getElementById('drillInputRow').classList.remove('on');
+  go('seniorScreen','s_drill_call');
+  drillStartTimer();
+  drillFetchReply();
+}
+
+function drillStartTimer(){
+  drillState.seconds=0;
+  const el=document.getElementById('drillTimer');
+  el.textContent='00:00';
+  drillState.timerInterval=setInterval(()=>{
+    drillState.seconds++;
+    const m=String(Math.floor(drillState.seconds/60)).padStart(2,'0');
+    const s=String(drillState.seconds%60).padStart(2,'0');
+    el.textContent=m+':'+s;
+  },1000);
+}
+
+function drillStopTimer(){
+  if(drillState.timerInterval){clearInterval(drillState.timerInterval);drillState.timerInterval=null;}
+}
+
+async function drillFetchReply(){
+  if(drillState.loading)return;
+  drillState.loading=true;
+  const sub=document.getElementById('drillSubtitle');
+  sub.textContent='对方正在说话...';sub.classList.add('loading');
+  try{
+    const resp=await fetch('/api/drill',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({scenario:drillState.scenario,history:drillState.history,phase:'chat'})
+    });
+    const data=await resp.json();
+    if(data.error){sub.textContent='(通话异常)';sub.classList.remove('loading');drillState.loading=false;return;}
+    const reply=data.reply||'...';
+    drillState.history.push({role:'assistant',content:reply});
+    drillState.round++;
+    sub.textContent='"'+reply+'"';sub.classList.remove('loading');
+    if(typeof speak==='function')speak(reply);
+    if(data.shouldEnd||drillState.round>=5){setTimeout(()=>drillEnd(),1500);}
+  }catch(e){
+    sub.textContent='(信号不好，请重试)';sub.classList.remove('loading');
+  }
+  drillState.loading=false;
+}
+
+function drillSend(){
+  if(drillState.ended||drillState.loading)return;
+  const input=document.getElementById('drillInput');
+  const text=input.value.trim();
+  if(!text){return;}
+  input.value='';
+  drillState.history.push({role:'user',content:text});
+  document.getElementById('drillUserSaid').textContent='你说：'+text;
+  document.getElementById('drillInputRow').classList.remove('on');
+  document.getElementById('drillCallBar').style.display='';
+  drillFetchReply();
+}
+
+function drillShowKeyboard(){
+  document.getElementById('drillInputRow').classList.add('on');
+  document.getElementById('drillCallBar').style.display='none';
+  document.getElementById('drillInput').focus();
+}
+
+function drillHangUp(){
+  if(drillState.ended)return;
+  drillState.history.push({role:'user',content:'[用户挂断了电话，明确拒绝了骗子]'});
+  drillEnd();
+}
+
+async function drillEnd(){
+  drillState.ended=true;
+  drillStopTimer();
+  if(drillMicOn&&drillRecog){drillRecog.stop();drillMicOn=false;}
+  const sub=document.getElementById('drillSubtitle');
+  sub.textContent='通话结束，正在评分...';sub.classList.add('loading');
+  try{
+    const resp=await fetch('/api/drill',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({scenario:drillState.scenario,history:drillState.history,phase:'score'})
+    });
+    const data=await resp.json();
+    if(data.error){toast('seniorScreen','评分出错');go('seniorScreen','s_drill_pick');return;}
+    drillRenderResult(data);
+    go('seniorScreen','s_drill_result');
+  }catch(e){toast('seniorScreen','网络出错');go('seniorScreen','s_drill_pick');}
+}
+
+function drillRenderResult(data){
+  const score=data.score||0;
+  const color=score>=80?'var(--green)':score>=50?'var(--amber)':'var(--red)';
+  const ring=document.getElementById('drillScoreRing');
+  ring.style.setProperty('--pct',score+'%');
+  ring.style.setProperty('--score-color',color);
+  document.getElementById('drillScoreNum').textContent=score;
+  document.getElementById('drillVerdict').textContent=data.verdict||'练习完成';
+  document.getElementById('drillVerdict').style.color=color;
+  document.getElementById('drillEncourage').textContent=data.encourage||'继续加油！';
+  document.getElementById('drillFlagList').innerHTML=(data.flags||[]).map(f=>'<div>🚩 '+esc(f)+'</div>').join('');
+  document.getElementById('drillWellList').innerHTML=(data.wellDone||[]).map(w=>'<div style="padding:4px 0;">✅ '+esc(w)+'</div>').join('');
+  if(typeof speak==='function')speak((data.verdict||'')+'。'+(data.encourage||''));
+}
+
+function drillShareResult(){
+  const sc=DRILL_SCENARIOS.find(s=>s.id===drillState.scenario);
+  const score=document.getElementById('drillScoreNum').textContent;
+  const title=sc?sc.title:'防骗练习';
+  if(typeof addRec==='function')addRec('🎯','防骗陪练完成','练了「'+title+'」，得分 '+score+' 分');
+  toast('seniorScreen','已告诉家人');
+}
+
+let drillRecog=null,drillMicOn=false;
+function drillToggleMic(){
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){toast('seniorScreen','浏览器不支持语音');return;}
+  const btn=document.getElementById('drillMicBtn');
+  if(drillMicOn){
+    if(drillRecog)drillRecog.stop();
+    drillMicOn=false;btn.classList.remove('listening');
+    return;
+  }
+  drillRecog=new SpeechRecognition();
+  drillRecog.lang='zh-CN';drillRecog.continuous=true;drillRecog.interimResults=true;
+  let finalText='';
+  drillRecog.onresult=e=>{
+    let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;
+    document.getElementById('drillUserSaid').textContent='(正在听) '+t;
+    finalText=t;
+  };
+  drillRecog.onerror=()=>{drillMicOn=false;btn.classList.remove('listening');};
+  drillRecog.onend=()=>{
+    drillMicOn=false;btn.classList.remove('listening');
+    if(finalText.trim()&&!drillState.ended&&!drillState.loading){
+      drillState.history.push({role:'user',content:finalText.trim()});
+      document.getElementById('drillUserSaid').textContent='你说：'+finalText.trim();
+      drillFetchReply();
+    }
+  };
+  drillRecog.start();
+  drillMicOn=true;btn.classList.add('listening');
+  document.getElementById('drillUserSaid').textContent='(正在听您说话...)';
 }
 </script>
 </body>
