@@ -169,6 +169,12 @@
   .drill-scene-card{background:#fff;border-radius:20px;padding:18px 14px;text-align:center;cursor:pointer;
        border:2px solid var(--line);box-shadow:0 2px 8px rgba(28,53,87,.05);transition:.2s;}
   .drill-scene-card:active,.drill-scene-card.active{border-color:var(--amber);background:#fdf8ef;}
+  .drill-scene-card.blind{grid-column:1/-1;text-align:left;padding:18px;display:grid;grid-template-columns:auto 1fr;column-gap:14px;align-items:center;
+       border-color:#8bb5e8;background:linear-gradient(145deg,#eaf3ff,#fff);}
+  .drill-scene-card.blind .dse{grid-row:1/3;margin:0;font-size:42px;}.drill-scene-card.blind .dss{font-size:13px;line-height:1.45;}
+  .challenge-mode-label{grid-column:1/-1;color:var(--mut);font-size:13px;font-weight:700;margin-top:4px;}
+  .drill-reveal{display:none;border:2px solid #c7d9ef;background:#f5f9ff;}
+  .drill-reveal.show{display:block;}.drill-reveal .reveal-label{font-size:20px;font-weight:900;color:var(--navy);margin:5px 0 7px;}
   .drill-scene-card .dse{font-size:36px;display:block;margin-bottom:8px;}
   .drill-scene-card .dst{font-size:16px;font-weight:700;color:var(--navy);}
   .drill-scene-card .dss{font-size:12px;color:var(--mut);margin-top:4px;}
@@ -509,7 +515,7 @@
 
           <!-- 来电模拟覆盖层 -->
           <div class="drill-incoming" id="drillIncoming">
-            <div class="inc-label">防骗练习 · 模拟来电</div>
+            <div class="inc-label" id="drillIncomingLabel">防骗练习 · 模拟来电</div>
             <div class="inc-avatar" id="drillIncAvatar">🏦</div>
             <div class="inc-number" id="drillIncNumber">95588****</div>
             <div class="inc-tag" id="drillIncTag">未知来电</div>
@@ -535,8 +541,13 @@
                 <div id="drillEncourage" class="muted" style="margin-top:6px;font-size:16px;">...</div>
               </div>
               <div class="card" id="drillFlagsCard">
-                <b style="color:var(--red);font-size:16px;">应该注意这些骗局特征：</b>
+                <b style="color:var(--red);font-size:16px;">这次需要注意：</b>
                 <div class="drill-flag-list" id="drillFlagList" style="margin-top:10px;"></div>
+              </div>
+              <div class="card drill-reveal" id="drillRevealCard">
+                <b class="muted">盲测答案</b>
+                <div class="reveal-label" id="drillRevealLabel">正在揭晓…</div>
+                <div id="drillRevealText" style="font-size:15px;line-height:1.65;"></div>
               </div>
               <div class="card" style="background:#e4f6ec;">
                 <b style="color:var(--green);font-size:16px;">你做得好的地方：</b>
@@ -583,8 +594,8 @@
             <div class="pad">
               <div id="c_verifySlot"></div>
               <div class="challenge-card">
-                <div class="ctop"><span class="cic">📞</span><div class="ctx"><b>发给爸爸练一练</b><small>模拟一次真实诈骗来电，练习识别、挂断和求助</small></div></div>
-                <button onclick="startChildChallenge()">选择一个骗局</button>
+                <div class="ctop"><span class="cic">🕵️</span><div class="ctx"><b>发起来电盲测</b><small>随机混合诈骗、普通通知和需要官方核实的来电</small></div></div>
+                <button onclick="startChildChallenge()">生成盲测挑战</button>
                 <div class="challenge-status" id="c_challengeStatus" style="display:none;"></div>
               </div>
               <div class="stat-card" id="c_stats" onclick="buildShareCard()">
@@ -613,15 +624,16 @@
           <div class="view" id="c_challenge_new">
             <div class="appbar"><span class="back" onclick="go('childScreen','c_home')">‹</span><h2>发给爸爸练一练</h2></div>
             <div class="pad" style="padding-top:0;">
-              <p style="text-align:center;font-size:16px;color:var(--navy);font-weight:700;margin:0 0 6px;">这次想让爸爸练哪一种骗局？</p>
-              <p class="muted" style="text-align:center;margin:0 0 15px;">生成专属链接，练完后成绩会回到这里</p>
+              <p style="text-align:center;font-size:16px;color:var(--navy);font-weight:700;margin:0 0 6px;">先不告诉爸爸答案</p>
+              <p class="muted" style="text-align:center;margin:0 0 15px;">系统随机出题，练完后揭晓并回传风险点</p>
               <div class="drill-scene-grid" id="childChallengeGrid"></div>
-              <button class="btn btn-primary" id="childChallengeCreateBtn" onclick="createFamilyChallenge()" disabled style="opacity:.5;">生成练习链接</button>
+              <button class="btn btn-primary" id="childChallengeCreateBtn" onclick="createFamilyChallenge()">生成盲测链接</button>
               <div class="challenge-created" id="challengeCreatedBox">
                 <b>✓ 练习链接已生成</b>
                 <div class="muted" id="challengeCreatedText">发给爸爸，点击后会直接进入这次练习。</div>
                 <button class="btn btn-primary" style="margin-top:13px;" onclick="shareCreatedChallenge()">发给爸爸</button>
                 <button class="btn btn-ghost" style="margin-top:9px;" onclick="copyCreatedChallenge()">复制链接</button>
+                <a class="btn btn-ghost" id="challengePreviewLink" href="#" target="_blank" rel="noopener" style="margin-top:9px;text-decoration:none;text-align:center;">预览爸爸看到的页面</a>
               </div>
             </div>
           </div>
@@ -707,7 +719,7 @@ function startDrillFromEntry(){
   go('seniorScreen','s_drill_pick');
 }
 function startChildChallenge(){
-  childChallengeSelected=null;createdChallenge=null;
+  childChallengeSelected='blind';createdChallenge=null;
   document.getElementById('challengeCreatedBox').classList.remove('show');
   renderChildChallengePicker();
   go('childScreen','c_challenge_new');
@@ -1191,24 +1203,29 @@ function addRec(ic,title,desc){
 
 // ===== 防骗陪练（来电模拟版） =====
 const DRILL_SCENARIOS=[
-  {id:'fake_bank',emoji:'🏦',title:'冒充银行客服',desc:'账户异常、要验证码',phone:'95588 ****',tag:'银行客服'},
-  {id:'lottery',emoji:'🎁',title:'中奖诈骗',desc:'先交税才能领奖金',phone:'400-832-****',tag:'活动通知'},
-  {id:'fake_grandchild',emoji:'👦',title:'冒充孙子孙女',desc:'换了新号、急需借钱',phone:'138 **** 7762',tag:'未存号码'},
-  {id:'fake_delivery',emoji:'📦',title:'冒充快递员',desc:'包裹问题、配合调查',phone:'0571-8832****',tag:'快递来电'},
-  {id:'health_product',emoji:'💊',title:'保健品推销',desc:'限时折扣、治百病',phone:'400-156-****',tag:'健康咨询'},
-  {id:'gov_impersonation',emoji:'👮',title:'冒充公检法',desc:'涉嫌犯罪、转移资金',phone:'010-6652****',tag:'公安局'}
+  {id:'fake_bank',kind:'scam',emoji:'🏦',title:'冒充银行客服',desc:'账户异常、要验证码',phone:'95588 ****',tag:'银行客服',label:'高风险诈骗',reveal:'银行不会电话索要验证码，也不会要求转账到安全账户。',focus:'验证码保护'},
+  {id:'lottery',kind:'scam',emoji:'🎁',title:'中奖诈骗',desc:'先交税才能领奖金',phone:'400-832-****',tag:'活动通知',label:'高风险诈骗',reveal:'凡是领奖前要求交税或手续费，都应停止操作并核实。',focus:'先付款后领奖'},
+  {id:'fake_grandchild',kind:'scam',emoji:'👦',title:'冒充孙子孙女',desc:'换了新号、急需借钱',phone:'138 **** 7762',tag:'未存号码',label:'高风险诈骗',reveal:'遇到换号借钱，应挂断并拨打亲友原来的号码核实。',focus:'亲友身份核实'},
+  {id:'fake_delivery',kind:'scam',emoji:'📦',title:'冒充快递员',desc:'包裹问题、配合调查',phone:'0571-8832****',tag:'快递来电',label:'高风险诈骗',reveal:'快递问题应通过官方物流页面或公开客服电话核实。',focus:'官方渠道核实'},
+  {id:'health_product',kind:'scam',emoji:'💊',title:'保健品推销',desc:'限时折扣、治百病',phone:'400-156-****',tag:'健康咨询',label:'高风险诈骗',reveal:'不要因限时催促购买夸大功效的保健品，应先问医生和家人。',focus:'催促付款识别'},
+  {id:'gov_impersonation',kind:'scam',emoji:'👮',title:'冒充公检法',desc:'涉嫌犯罪、转移资金',phone:'010-6652****',tag:'公安局',label:'高风险诈骗',reveal:'公检法不会通过电话办案，更不会要求转移资金。',focus:'权威身份核实'},
+  {id:'community_checkup',kind:'low_risk',emoji:'🏥',title:'社区体检通知',desc:'只通知时间和地点',phone:'010-**** 2210',tag:'社区服务',label:'低风险通知',reveal:'对方没有索要钱或个人敏感信息，具体安排仍可查看社区公告核对。',focus:'风险分级判断'},
+  {id:'parcel_notice',kind:'low_risk',emoji:'📦',title:'快递到站通知',desc:'只通知到站和营业时间',phone:'950** ****',tag:'物流通知',label:'低风险通知',reveal:'对方没有索要取件码、验证码或付款，可以到官方物流页面核对。',focus:'风险分级判断'},
+  {id:'bank_official_check',kind:'verify',emoji:'🏦',title:'银行风险提醒',desc:'要求挂断后官方回拨',phone:'95588 ****',tag:'银行提醒',label:'需要官方核实',reveal:'不能只凭来电号码判断身份。应挂断后拨打银行卡背面的官方电话。',focus:'官方回拨核实'}
 ];
-let childChallengeSelected=null,createdChallenge=null;
+let childChallengeSelected='blind',createdChallenge=null;
 
 function renderChildChallengePicker(){
   const grid=document.getElementById('childChallengeGrid');
   if(!grid)return;
-  grid.innerHTML=DRILL_SCENARIOS.map(s=>
+  grid.innerHTML='<div class="drill-scene-card blind active" data-id="blind" onclick="selectChildChallenge(\'blind\',this)">'+
+    '<span class="dse">🕵️</span><div class="dst">随机盲测</div><div class="dss">可能是诈骗、普通通知，也可能需要官方回拨核实</div></div>'+
+    '<div class="challenge-mode-label">也可以指定一个骗局进行教学</div>'+DRILL_SCENARIOS.filter(s=>s.kind==='scam').map(s=>
     '<div class="drill-scene-card" data-id="'+s.id+'" onclick="selectChildChallenge(\''+s.id+'\',this)">'+
     '<span class="dse">'+s.emoji+'</span><div class="dst">'+s.title+'</div><div class="dss">'+s.desc+'</div></div>'
   ).join('');
   const btn=document.getElementById('childChallengeCreateBtn');
-  btn.disabled=true;btn.style.opacity='.5';btn.textContent='生成练习链接';
+  childChallengeSelected='blind';btn.disabled=false;btn.style.opacity='1';btn.textContent='生成盲测链接';
 }
 
 function selectChildChallenge(id,el){
@@ -1216,7 +1233,7 @@ function selectChildChallenge(id,el){
   document.querySelectorAll('#childChallengeGrid .drill-scene-card').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
   const btn=document.getElementById('childChallengeCreateBtn');
-  btn.disabled=false;btn.style.opacity='1';
+  btn.disabled=false;btn.style.opacity='1';btn.textContent=id==='blind'?'生成盲测链接':'生成教学链接';
   document.getElementById('challengeCreatedBox').classList.remove('show');
 }
 
@@ -1237,19 +1254,25 @@ async function createFamilyChallenge(){
   const btn=document.getElementById('childChallengeCreateBtn');
   btn.disabled=true;btn.style.opacity='.6';btn.textContent='正在生成…';
   try{
+    const payload=childChallengeSelected==='blind'
+      ? {mode:'blind',sender:'女儿',target:'爸爸'}
+      : {mode:'teaching',scenario:childChallengeSelected,sender:'女儿',target:'爸爸'};
     const resp=await fetch('/api/challenges',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({scenario:childChallengeSelected,sender:'女儿',target:'爸爸'})});
+      body:JSON.stringify(payload)});
     const data=await resp.json();
     if(!resp.ok||data.error)throw new Error(data.error||'create failed');
     const u=new URL(location.origin+location.pathname);u.searchParams.set('challenge',data.id);
     createdChallenge={...data,url:u.toString()};rememberChallenge(data.id);
+    document.getElementById('challengePreviewLink').href=createdChallenge.url;
     const sc=DRILL_SCENARIOS.find(s=>s.id===data.scenario);
-    document.getElementById('challengeCreatedText').textContent='已生成「'+(sc?sc.title:'防骗')+'」练习，发给爸爸后可以在子女端查看成绩。';
+    document.getElementById('challengeCreatedText').textContent=data.mode==='blind'
+      ? '已生成盲测挑战。答案将在练习结束后揭晓，风险点会自动回传。'
+      : '已生成「'+(sc?sc.title:'防骗')+'」教学练习，完成后可以查看成绩。';
     document.getElementById('challengeCreatedBox').classList.add('show');
-    btn.textContent='重新生成链接';btn.disabled=false;btn.style.opacity='1';
+    btn.textContent=data.mode==='blind'?'重新生成盲测链接':'重新生成教学链接';btn.disabled=false;btn.style.opacity='1';
     refreshFamilyChallenges();
   }catch(e){
-    btn.textContent='生成练习链接';btn.disabled=false;btn.style.opacity='1';
+    btn.textContent=childChallengeSelected==='blind'?'生成盲测链接':'生成教学链接';btn.disabled=false;btn.style.opacity='1';
     toast('childScreen','链接生成失败，请稍后再试');
   }
 }
@@ -1258,7 +1281,9 @@ async function shareCreatedChallenge(){
   if(!createdChallenge)return;
   const sc=DRILL_SCENARIOS.find(s=>s.id===createdChallenge.scenario);
   const shareData={title:'省心扫 · 家庭防骗练习',
-    text:'爸爸，我给你发来一场「'+(sc?sc.title:'防骗')+'」练习。点开接一次模拟电话，练完我就能看到成绩。',
+    text:createdChallenge.mode==='blind'
+      ? '爸爸，我给你发来一场来电判断练习。可能是诈骗，也可能是普通通知，接完才揭晓答案。'
+      : '爸爸，我给你发来一场「'+(sc?sc.title:'防骗')+'」练习。点开接一次模拟电话，练完我就能看到成绩。',
     url:createdChallenge.url};
   if(navigator.share){
     try{await navigator.share(shareData);return;}catch(e){if(e&&e.name==='AbortError')return;}
@@ -1292,11 +1317,17 @@ async function refreshFamilyChallenges(){
     const sc=DRILL_SCENARIOS.find(s=>s.id===ch.scenario);
     box.style.display='block';
     if(ch.status==='completed'&&ch.result){
-      box.innerHTML='<b>爸爸已完成 · '+Number(ch.result.score||0)+' 分</b><br>'+esc(sc?sc.title:'防骗练习')+'：'+esc(ch.result.verdict||'练习完成');
+      const answer=ch.result.answer;
+      const title=ch.mode==='blind'&&answer?'盲测揭晓：'+answer.label:(sc?sc.title:'防骗练习');
+      const profile=Array.isArray(ch.result.riskProfile)&&ch.result.riskProfile.length
+        ? '<br><span>本次风险画像：'+ch.result.riskProfile.map(esc).join('；')+'</span>':'';
+      box.innerHTML='<b>爸爸已完成 · '+Number(ch.result.score||0)+' 分</b><br>'+esc(title)+'：'+esc(ch.result.verdict||'练习完成')+profile;
     }else{
-      box.innerHTML='<b>等待爸爸完成</b><br>已发送「'+esc(sc?sc.title:'防骗练习')+'」，完成后成绩会显示在这里。';
+      box.innerHTML=ch.mode==='blind'
+        ? '<b>等待爸爸完成</b><br>已发送「来电盲测挑战」，答案将在完成后揭晓。'
+        : '<b>等待爸爸完成</b><br>已发送「'+esc(sc?sc.title:'防骗练习')+'」，完成后成绩会显示在这里。';
     }
-  }catch(e){box.style.display='block';box.innerHTML='<b>上次练习已过期</b><br>可以重新选择一个骗局发给爸爸。';}
+  }catch(e){box.style.display='block';box.innerHTML='<b>上次练习已过期</b><br>可以重新发起一场来电盲测。';}
 }
 
 async function loadIncomingChallenge(){
@@ -1306,13 +1337,15 @@ async function loadIncomingChallenge(){
     const resp=await fetch('/api/challenges/'+encodeURIComponent(id),{cache:'no-store'});
     const ch=await resp.json();
     if(!resp.ok||ch.error)throw new Error();
-    const sc=DRILL_SCENARIOS.find(s=>s.id===ch.scenario);
-    if(!sc)throw new Error();
-    drillState.scenario=sc.id;drillState.challengeId=id;drillState.challengeSubmitted=false;
-    document.getElementById('challengeInviteTitle').textContent=(ch.sender||'家人')+'给你发来一场防骗练习';
+    const sc=ch.scenario?DRILL_SCENARIOS.find(s=>s.id===ch.scenario):null;
+    if(ch.mode!=='blind'&&!sc)throw new Error();
+    drillState.scenario=sc?sc.id:null;drillState.challengeId=id;drillState.challengeMode=ch.mode||'teaching';drillState.challengeSubmitted=false;
+    document.getElementById('challengeInviteTitle').textContent=(ch.sender||'家人')+'给你发来一场'+(ch.mode==='blind'?'来电判断练习':'防骗练习');
     document.getElementById('challengeInviteFrom').textContent='练完后，成绩会自动告诉'+(ch.sender||'家人');
-    document.getElementById('challengeInviteScene').textContent=sc.emoji+' '+sc.title;
-    document.getElementById('challengeInviteDesc').textContent=sc.desc;
+    document.getElementById('challengeInviteScene').textContent=ch.mode==='blind'?'🕵️ 这通电话是什么情况？':sc.emoji+' '+sc.title;
+    document.getElementById('challengeInviteDesc').textContent=ch.mode==='blind'
+      ? '可能是诈骗、普通通知，也可能需要官方核实。接完后再揭晓答案。'
+      : sc.desc;
     document.getElementById('entry').classList.remove('on');
     document.getElementById('childScreen').classList.remove('on');
     document.getElementById('seniorScreen').classList.add('on');
@@ -1322,19 +1355,32 @@ async function loadIncomingChallenge(){
   }
 }
 
-function startInvitedChallenge(){
-  if(!drillState.challengeId||!drillState.scenario)return;
-  drillState.challengeSubmitted=false;
-  drillStart();
+async function startInvitedChallenge(){
+  if(!drillState.challengeId)return;
+  const btn=document.getElementById('challengeInviteStart');
+  btn.disabled=true;btn.textContent='正在准备来电…';
+  try{
+    if(!drillState.scenario){
+      const resp=await fetch('/api/challenges/'+encodeURIComponent(drillState.challengeId)+'/start',{method:'POST'});
+      const data=await resp.json();
+      if(!resp.ok||data.error)throw new Error();
+      const sc=DRILL_SCENARIOS.find(s=>s.id===data.scenario);
+      if(!sc)throw new Error();
+      drillState.scenario=sc.id;
+    }
+    drillState.challengeSubmitted=false;
+    drillStart();
+  }catch(e){toast('seniorScreen','练习暂时无法开始，请让家人重新发送');}
+  finally{btn.disabled=false;btn.textContent='准备好了，开始练习';}
 }
 
 let drillState={scenario:null,history:[],round:0,ended:false,loading:false,timerInterval:null,seconds:0,
-  mockSmsShown:false,mockCode:'',mockSmsDelayTimer:null,mockSmsTimer:null,challengeId:null,challengeSubmitted:false};
+  mockSmsShown:false,mockCode:'',mockSmsDelayTimer:null,mockSmsTimer:null,challengeId:null,challengeMode:'teaching',challengeSubmitted:false};
 
 function drillRenderPicker(){
   const grid=document.getElementById('drillSceneGrid');
   if(!grid)return;
-  grid.innerHTML=DRILL_SCENARIOS.map(s=>
+  grid.innerHTML=DRILL_SCENARIOS.filter(s=>s.kind==='scam').map(s=>
     '<div class="drill-scene-card" onclick="drillSelectScenario(\''+s.id+'\',this)">'+
     '<span class="dse">'+s.emoji+'</span><div class="dst">'+s.title+'</div><div class="dss">'+s.desc+'</div></div>'
   ).join('');
@@ -1342,7 +1388,7 @@ function drillRenderPicker(){
 
 function drillSelectScenario(id,el){
   drillState.scenario=id;
-  drillState.challengeId=null;drillState.challengeSubmitted=false;
+  drillState.challengeId=null;drillState.challengeMode='teaching';drillState.challengeSubmitted=false;
   document.querySelectorAll('.drill-scene-card').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
   const btn=document.getElementById('drillStartBtn');
@@ -1356,7 +1402,10 @@ function drillStart(){
   drillHideMockSms();
   const notice=document.getElementById('challengeResultNotice');
   notice.style.display='none';notice.textContent='';
+  const reveal=document.getElementById('drillRevealCard');
+  reveal.classList.remove('show');
   const sc=DRILL_SCENARIOS.find(s=>s.id===drillState.scenario);
+  document.getElementById('drillIncomingLabel').textContent=drillState.challengeMode==='blind'?'来电判断练习 · 模拟来电':'防骗练习 · 模拟来电';
   document.getElementById('drillIncAvatar').textContent=sc.emoji;
   document.getElementById('drillIncNumber').textContent=sc.phone;
   document.getElementById('drillIncTag').textContent=sc.tag;
@@ -1364,11 +1413,30 @@ function drillStart(){
   if(navigator.vibrate)try{navigator.vibrate([200,100,200,100,200]);}catch(e){}
 }
 
+function drillAnswerMeta(sc){
+  return {kind:sc.kind,label:sc.label,reveal:sc.reveal,focus:sc.focus};
+}
+
+function blindDeclineResult(sc){
+  if(sc.kind==='low_risk')return {score:80,verdict:'很谨慎，但这是一通低风险通知',
+    flags:['这通电话没有索要钱或敏感信息','可以通过公告或官方渠道核对'],wellDone:['没有泄露任何个人信息','没有因来电立即操作'],
+    encourage:'保持谨慎，也可以练习分清风险高低。',answer:drillAnswerMeta(sc)};
+  if(sc.kind==='verify')return {score:95,verdict:'挂断是对的，记得再从官方渠道回拨',
+    flags:['不要直接回拨来电号码','从银行卡或官方App找电话'],wellDone:['没有在来电中提供信息','及时结束了不确定的通话'],
+    encourage:'这就是安全核实的正确方向。',answer:drillAnswerMeta(sc)};
+  return {score:100,verdict:'太棒了！第一时间拒接高风险来电',flags:['陌生号码来电不要轻易相信','涉及钱和验证码立即挂断'],
+    wellDone:['第一时间拒接，防骗意识很强','没有给骗子任何机会'],encourage:'您的警觉性满分！继续保持！',answer:drillAnswerMeta(sc)};
+}
+
 function drillDecline(){
   document.getElementById('drillIncoming').classList.remove('on');
   if(navigator.vibrate)try{navigator.vibrate(0);}catch(e){}
+  drillState.ended=true;
   drillState.history.push({role:'user',content:'[用户直接拒接了来电，没有接听]'});
-  drillRenderResult({score:100,verdict:'太棒了！第一时间拒接陌生可疑电话',flags:['陌生号码来电不要轻易接听','银行/公安不会电话要求转账','接了也别慌，随时可以挂断'],wellDone:['第一时间拒接，防骗意识很强','没有给骗子任何机会'],encourage:'您的警觉性满分！继续保持，骗子拿您没办法！'});
+  const sc=DRILL_SCENARIOS.find(s=>s.id===drillState.scenario);
+  const result=drillState.challengeMode==='blind'?blindDeclineResult(sc):
+    {score:100,verdict:'太棒了！第一时间拒接陌生可疑电话',flags:['陌生号码来电不要轻易接听','银行/公安不会电话要求转账','接了也别慌，随时可以挂断'],wellDone:['第一时间拒接，防骗意识很强','没有给骗子任何机会'],encourage:'您的警觉性满分！继续保持，骗子拿您没办法！'};
+  drillRenderResult(result);
   go('seniorScreen','s_drill_result');
 }
 
@@ -1478,7 +1546,9 @@ function drillShowKeyboard(){
 function drillHangUp(){
   if(drillState.ended)return;
   drillHideMockSms();
-  drillState.history.push({role:'user',content:'[用户挂断了电话，明确拒绝了骗子]'});
+  drillState.history.push({role:'user',content:drillState.challengeMode==='blind'
+    ? '[用户主动挂断当前来电，准备通过官方渠道或家人另行核实]'
+    : '[用户挂断了电话，明确拒绝了骗子]'});
   drillEnd();
 }
 
@@ -1513,6 +1583,14 @@ function drillRenderResult(data){
   document.getElementById('drillEncourage').textContent=data.encourage||'继续加油！';
   document.getElementById('drillFlagList').innerHTML=(data.flags||[]).map(f=>'<div>🚩 '+esc(f)+'</div>').join('');
   document.getElementById('drillWellList').innerHTML=(data.wellDone||[]).map(w=>'<div style="padding:4px 0;">✅ '+esc(w)+'</div>').join('');
+  const reveal=document.getElementById('drillRevealCard');
+  if(drillState.challengeMode==='blind'){
+    const sc=DRILL_SCENARIOS.find(s=>s.id===drillState.scenario);
+    const answer=data.answer||drillAnswerMeta(sc);
+    document.getElementById('drillRevealLabel').textContent=answer.label||'答案已揭晓';
+    document.getElementById('drillRevealText').textContent=answer.reveal||'';
+    reveal.classList.add('show');
+  }else reveal.classList.remove('show');
   if(typeof speak==='function')speak((data.verdict||'')+'。'+(data.encourage||''));
   drillSubmitChallengeResult(data);
 }
