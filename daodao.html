@@ -129,6 +129,24 @@
     .verdict p { margin:9px 0 0; color:var(--muted); line-height:1.6; font-size:14px; }
     .section { margin-top:27px; }
     .section h3 { margin:0 0 13px; font-size:17px; }
+    .research-title { display:flex; align-items:baseline; justify-content:space-between; gap:16px; }
+    .research-title h3 { margin-bottom:13px; }
+    .research-confidence { color:var(--muted); font-size:12px; white-space:nowrap; }
+    .research-panel { padding:18px; border:1.5px solid var(--ink); border-radius:14px; background:var(--paper); }
+    .research-panel.unavailable { border-color:var(--line); background:var(--paper-2); }
+    .research-summary { margin:0; font-size:15px; font-weight:750; line-height:1.6; }
+    .market-ranges { margin-top:15px; border-top:1px solid var(--line); }
+    .market-range { display:grid; grid-template-columns:125px 1fr; gap:12px; padding:13px 0; border-bottom:1px solid var(--line); }
+    .market-range:last-child { border-bottom:0; padding-bottom:2px; }
+    .market-range span { color:var(--muted); font-size:13px; }
+    .market-range strong { display:block; font-size:19px; }
+    .market-range small { display:block; margin-top:5px; color:var(--muted); font-size:12px; line-height:1.45; }
+    .research-observations { display:grid; gap:7px; margin:14px 0 0; padding-left:18px; color:var(--muted); font-size:13px; line-height:1.5; }
+    .source-links { display:grid; gap:7px; margin-top:15px; }
+    .source-link { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--line); color:var(--ink); font-size:13px; font-weight:750; text-decoration:none; }
+    .source-link span:last-child { color:var(--muted); font-weight:500; }
+    .source-link:hover { color:var(--danger); }
+    .research-meta { margin:13px 0 0; color:var(--muted); font-size:11px; line-height:1.5; }
     .fact-list { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
     .fact-list li { padding:11px 13px; background:var(--paper-2); border-radius:10px; font-size:14px; line-height:1.5; }
     .action-box { padding:16px 18px; border:1.5px solid var(--ink); border-radius:14px; font-weight:750; line-height:1.55; }
@@ -176,6 +194,7 @@
       .percent { font-size:58px; }
       .metrics { grid-template-columns:1fr 1fr; }
       .metric:last-child { grid-column:1 / -1; }
+      .market-range { grid-template-columns:1fr; gap:5px; }
     }
     @media (prefers-color-scheme:dark) {
       :root { color-scheme:dark; --bg:#171714; --paper:#22221e; --paper-2:#2c2c27; --ink:#f5f2e9; --muted:#aaa79e; --line:#45443d; --accent:#f3c83d; --accent-strong:#d9aa18; --danger:#ff7b62; --success:#65ce99; --shadow:0 22px 70px rgba(0,0,0,.24); }
@@ -324,7 +343,7 @@
         <div class="loading" id="loading" aria-live="polite">
           <div class="loading-mark" aria-hidden="true"></div>
           <h2>正在量这把刀</h2>
-          <p>先算砍价幅度，再核对证据边界。</p>
+          <p>正在联网查同款公开价格，并核对证据来源。</p>
         </div>
 
         <article class="result" id="result" aria-live="polite">
@@ -343,12 +362,23 @@
             </div>
             <div class="verdict"><strong id="verdict"></strong><p id="boundary"></p></div>
 
+            <section class="section" id="researchSection">
+              <div class="research-title"><h3>刀刀联网查到</h3><span class="research-confidence" id="researchConfidence"></span></div>
+              <div class="research-panel" id="researchPanel">
+                <p class="research-summary" id="researchSummary"></p>
+                <div class="market-ranges" id="marketRanges"></div>
+                <ul class="research-observations" id="researchObservations"></ul>
+                <div class="source-links" id="sourceLinks"></div>
+                <p class="research-meta" id="researchMeta"></p>
+              </div>
+            </section>
+
             <section class="section">
               <h3>为什么这么判断</h3>
               <ul class="fact-list" id="factors"></ul>
             </section>
             <section class="section" id="missingSection">
-              <h3>还缺这些信息</h3>
+              <h3>还需要你确认</h3>
               <ul class="fact-list" id="missing"></ul>
             </section>
             <section class="section">
@@ -536,6 +566,43 @@
       return value === null || value === undefined ? "未填写" : `¥${Number(value).toLocaleString("zh-CN", { maximumFractionDigits:2 })}`;
     }
 
+    function renderResearch(value) {
+      const research = value || { status:"unavailable",confidence:"低",summary:"联网查价暂时不可用。",sources:[] };
+      const panel = document.getElementById("researchPanel");
+      const confidence = document.getElementById("researchConfidence");
+      const ranges = document.getElementById("marketRanges");
+      const observations = document.getElementById("researchObservations");
+      const sources = document.getElementById("sourceLinks");
+      panel.classList.toggle("unavailable", research.status !== "ready");
+      confidence.textContent = research.status === "ready" ? `可信度 ${research.confidence}` : research.status === "needs_item" ? "需要准确商品名" : "公开证据不足";
+      document.getElementById("researchSummary").textContent = research.summary || "没有找到可核验的公开价格。";
+      ranges.replaceChildren();
+      [research.newPrice,research.usedListing,research.confirmedSold].filter(Boolean).forEach((range) => {
+        const row = document.createElement("div"); row.className = "market-range";
+        const label = document.createElement("span"); label.textContent = range.label;
+        const content = document.createElement("div");
+        const price = document.createElement("strong"); price.textContent = range.min === range.max ? money(range.min) : `${money(range.min)} - ${money(range.max)}`;
+        const evidence = document.createElement("small"); evidence.textContent = range.evidence || "来自公开网页信息";
+        content.append(price,evidence); row.append(label,content); ranges.appendChild(row);
+      });
+      ranges.style.display = ranges.children.length ? "block" : "none";
+      observations.replaceChildren();
+      (research.observations || []).slice(0, 3).forEach((text) => {
+        const item = document.createElement("li"); item.textContent = text; observations.appendChild(item);
+      });
+      observations.style.display = observations.children.length ? "grid" : "none";
+      sources.replaceChildren();
+      (research.sources || []).slice(0, 6).forEach((source) => {
+        const link = document.createElement("a"); link.className = "source-link"; link.href = source.url; link.target = "_blank"; link.rel = "noopener noreferrer";
+        const title = document.createElement("span"); title.textContent = source.title || "公开来源";
+        const action = document.createElement("span"); action.textContent = "查看来源";
+        link.append(title,action); sources.appendChild(link);
+      });
+      const searchedAt = research.searchedAt ? new Date(research.searchedAt).toLocaleString("zh-CN", { month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit" }) : "";
+      const limitation = (research.limitations || [])[0];
+      document.getElementById("researchMeta").textContent = [searchedAt ? `查询时间 ${searchedAt}` : "",research.cached ? "使用近期缓存" : "",limitation,"公开挂牌价不等于真实成交价"].filter(Boolean).join("。") + "。";
+    }
+
     function renderResult(data) {
       document.getElementById("resultLabel").textContent = data.level;
       document.getElementById("cutPercent").textContent = data.cutPercent;
@@ -546,6 +613,7 @@
       document.getElementById("comparison").textContent = data.comparison ? `${money(data.comparison.min)} 到 ${money(data.comparison.max)}` : "未提供";
       document.getElementById("verdict").textContent = data.verdict;
       document.getElementById("boundary").textContent = data.boundary;
+      renderResearch(data.research);
       setList("factors", data.factors);
       setList("missing", data.missing);
       document.getElementById("missingSection").style.display = data.missing && data.missing.length ? "block" : "none";
