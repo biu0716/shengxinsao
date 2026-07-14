@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f4f2ec">
   <title>刀刀｜二手交易砍价参谋</title>
-  <meta name="description" content="上传商品或聊天截图，看清对方刀了多少、该不该接，并生成可以直接发送的回复话术。">
+  <meta name="description" content="上传截图，或用语音和文字描述交易，看清对方刀了多少、该不该接，并生成可以直接发送的回复话术。">
   <style>
     :root {
       color-scheme: light;
@@ -67,6 +67,18 @@
     .preview img { display:block; width:100%; max-height:310px; object-fit:contain; border-radius:12px; background:#fff; }
     .remove-image { position:absolute; top:20px; right:20px; width:36px; height:36px; border:1px solid var(--line); border-radius:50%; background:rgba(24,24,22,.82); color:#fff; cursor:pointer; font-size:20px; }
     .privacy { margin:9px 2px 0; color:var(--muted); font-size:12px; line-height:1.55; }
+    .input-or { display:flex; align-items:center; gap:12px; margin:18px 0; color:var(--muted); font-size:12px; }
+    .input-or::before,.input-or::after { content:""; height:1px; flex:1; background:var(--line); }
+    .description-box { padding:17px; border:1.5px solid var(--line); border-radius:16px; background:var(--paper-2); }
+    .description-head { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:12px; }
+    .description-title strong { display:block; font-size:16px; }
+    .description-title span { display:block; margin-top:4px; color:var(--muted); font-size:12px; }
+    .voice-button { min-height:40px; padding:0 14px; border:1.5px solid var(--ink); border-radius:12px; background:var(--paper); font-size:13px; font-weight:850; cursor:pointer; white-space:nowrap; }
+    .voice-button:hover { background:var(--accent); }
+    .voice-button.listening { background:var(--danger); color:#fffef9; border-color:var(--danger); }
+    .voice-button:disabled { color:var(--muted); border-color:var(--line); background:var(--paper); opacity:.72; cursor:not-allowed; }
+    .description-box textarea { min-height:98px; background:var(--paper); }
+    .voice-status { min-height:18px; margin:8px 1px 0; }
     .price-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:24px; }
     .field { display:grid; gap:8px; }
     .field label,.field-label { font-size:14px; font-weight:800; }
@@ -156,6 +168,7 @@
       .form-head { padding-top:23px; }
       h2 { font-size:24px; }
       .price-grid,.detail-grid { grid-template-columns:1fr; }
+      .description-head { align-items:flex-start; }
       .detail-grid .wide { grid-column:auto; }
       .actions { grid-template-columns:1fr; }
       .secondary { order:2; }
@@ -191,7 +204,7 @@
       <section class="hero" aria-labelledby="hero-title">
         <p class="eyebrow">二手交易砍价参谋</p>
         <h1 id="hero-title">一拍就知道，<br>这刀<span class="slash">离不离谱。</span></h1>
-        <p class="lead">上传商品或聊天截图，看清对方刀了多少、该不该接，再拿一段能直接发出去的回复。</p>
+        <p class="lead">上传截图，或者直接说给刀刀听。看清对方刀了多少、该不该接，再拿一段能直接发出去的回复。</p>
         <div class="modes" aria-label="使用身份">
           <div class="mode active"><strong>我被刀了</strong><span>卖家看报价，决定接不接</span></div>
           <button class="mode soon" id="buyerSoon" type="button"><strong>我想出刀</strong><span>买家版即将上线</span></button>
@@ -208,7 +221,7 @@
           <div class="form-head">
             <p class="step">卖家侧测试版</p>
             <h2>这刀该不该接？</h2>
-            <p class="sub">先上传截图，必要时再补充或修正价格。</p>
+            <p class="sub">上传截图、打字或语音描述，选一种就能开始。</p>
           </div>
           <div class="form-body">
             <div class="uploader" id="dropZone">
@@ -225,13 +238,24 @@
             </div>
             <p class="privacy">请先遮住姓名、电话、地址等隐私。图片只用于本次判断。</p>
 
+            <div class="input-or"><span>或者</span></div>
+            <div class="description-box">
+              <div class="description-head">
+                <div class="description-title"><strong>直接描述这次砍价</strong><span>像聊天一样说清楚就行</span></div>
+                <button class="voice-button" id="voiceButton" type="button" aria-pressed="false">开始语音</button>
+              </div>
+              <label class="field-label" for="description">文字描述</label>
+              <textarea id="description" name="description" maxlength="500" placeholder="例如：骑行裤原价400，穿过几次，挂110，对方只出60，我最低95。"></textarea>
+              <p class="helper voice-status" id="voiceStatus" role="status">刀刀不保存录音，只提交识别后的文字。</p>
+            </div>
+
             <div class="price-grid">
               <div class="field">
-                <label for="listingPrice">我的挂牌价 <span class="helper">截图可识别</span></label>
+                <label for="listingPrice">我的挂牌价 <span class="helper">截图或描述可识别</span></label>
                 <div class="money"><input id="listingPrice" name="listingPrice" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="110"></div>
               </div>
               <div class="field">
-                <label for="offerPrice">对方报价 <span class="helper">截图可识别</span></label>
+                <label for="offerPrice">对方报价 <span class="helper">截图或描述可识别</span></label>
                 <div class="money"><input id="offerPrice" name="offerPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="60"></div>
               </div>
             </div>
@@ -356,12 +380,20 @@
     const previewImage = document.getElementById("previewImage");
     const uploadEmpty = document.getElementById("uploadEmpty");
     const removeImage = document.getElementById("removeImage");
+    const descriptionInput = document.getElementById("description");
+    const voiceButton = document.getElementById("voiceButton");
+    const voiceStatus = document.getElementById("voiceStatus");
+    const submitButton = document.getElementById("submitButton");
     const loading = document.getElementById("loading");
     const result = document.getElementById("result");
     const status = document.getElementById("formStatus");
     const toast = document.getElementById("toast");
     let imageData = "";
     let latestScripts = {};
+    let recognition = null;
+    let isListening = false;
+    let voiceBaseText = "";
+    let voiceHadError = false;
 
     function showToast(message) {
       toast.textContent = message;
@@ -421,16 +453,71 @@
     removeImage.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); resetImage(); });
     document.getElementById("buyerSoon").addEventListener("click", () => showToast("买家出刀版正在准备，先用卖家版。"));
 
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = "zh-CN";
+      recognition.interimResults = true;
+      recognition.continuous = false;
+      recognition.onstart = () => {
+        isListening = true;
+        voiceHadError = false;
+        voiceBaseText = descriptionInput.value.trim();
+        voiceButton.textContent = "停止语音";
+        voiceButton.classList.add("listening");
+        voiceButton.setAttribute("aria-pressed", "true");
+        submitButton.disabled = true;
+        submitButton.textContent = "请先说完";
+        voiceStatus.textContent = "正在听，请说出商品、挂牌价和对方报价。";
+      };
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results).map((result) => result[0].transcript).join("");
+        descriptionInput.value = [voiceBaseText, transcript].filter(Boolean).join(voiceBaseText ? "\n" : "");
+      };
+      recognition.onerror = (event) => {
+        voiceHadError = true;
+        const messages = {
+          "not-allowed":"请允许麦克风权限，或者直接打字描述。",
+          "no-speech":"没有听清，可以再说一次。",
+          "audio-capture":"没有找到可用的麦克风。",
+          "network":"语音识别网络暂时不可用，可以直接打字。",
+        };
+        voiceStatus.textContent = messages[event.error] || "语音识别没有成功，可以再试一次。";
+      };
+      recognition.onend = () => {
+        isListening = false;
+        voiceButton.textContent = "开始语音";
+        voiceButton.classList.remove("listening");
+        voiceButton.setAttribute("aria-pressed", "false");
+        submitButton.disabled = false;
+        submitButton.textContent = "帮我看看这刀";
+        if (descriptionInput.value.trim() && !voiceHadError) {
+          voiceStatus.textContent = "已经转成文字，你可以修改后再判断。";
+        }
+      };
+      voiceButton.addEventListener("click", () => {
+        if (isListening) recognition.stop();
+        else {
+          try { recognition.start(); }
+          catch { voiceStatus.textContent = "语音正在启动，请稍等。"; }
+        }
+      });
+    } else {
+      voiceButton.disabled = true;
+      voiceStatus.textContent = "当前浏览器不支持语音输入，可以直接打字描述。";
+    }
+
     document.getElementById("demoButton").addEventListener("click", () => {
       document.querySelector("details").open = true;
-      document.getElementById("listingPrice").value = "110";
-      document.getElementById("offerPrice").value = "60";
-      document.getElementById("itemName").value = "骑行裤";
-      document.getElementById("originalPrice").value = "400";
-      document.getElementById("floorPrice").value = "95";
-      document.getElementById("category").value = "贴身或消耗类";
-      document.getElementById("condition").value = "轻度使用";
-      document.getElementById("note").value = "穿过几次，无明显破损，挂牌110元包邮。";
+      descriptionInput.value = "我在卖一条骑行裤，原价400元，穿过几次，挂110元，对方只出60元，我最低95元。";
+      document.getElementById("listingPrice").value = "";
+      document.getElementById("offerPrice").value = "";
+      document.getElementById("itemName").value = "";
+      document.getElementById("originalPrice").value = "";
+      document.getElementById("floorPrice").value = "";
+      document.getElementById("category").value = "";
+      document.getElementById("condition").value = "";
+      document.getElementById("note").value = "";
       form.requestSubmit();
     });
 
