@@ -14,6 +14,7 @@ const LLM_URL =
   (process.env.AI_GATEWAY_BASE_URL ? process.env.AI_GATEWAY_BASE_URL + "/api/v1/chat/completions" : "");
 const LLM_KEY = process.env.LLM_API_KEY || process.env.AI_GATEWAY_API_KEY || "";
 const MODEL = process.env.LLM_MODEL || "deepseek-chat";
+const LLM_READY = !!(LLM_URL && LLM_KEY);
 
 if (!LLM_URL || !LLM_KEY) {
   console.error("[警告] 未配置 LLM_URL / LLM_API_KEY，AI 接口将无法工作。请设置环境变量后重启。");
@@ -73,7 +74,7 @@ async function askJSON(system, user) {
 }
 
 // 调用视觉模型看图，要求返回 JSON
-async function askVisionJSON(system, imageDataUri, note) {
+async function askVisionPromptJSON(system, imageDataUri, userText) {
   const r = await fetch(VISION_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${VISION_KEY}`, "Content-Type": "application/json", "Accept-Encoding": "identity" },
@@ -84,7 +85,7 @@ async function askVisionJSON(system, imageDataUri, note) {
       messages: [
         { role: "system", content: system },
         { role: "user", content: [
-          { type: "text", text: "这是老人收到并拍下来的截图/图片。" + (note ? "老人补充说：" + note : "") + " 请先认出图里的文字/收款信息，再判断是不是诈骗。" },
+          { type: "text", text: userText },
           { type: "image_url", image_url: { url: imageDataUri } },
         ] },
       ],
@@ -97,6 +98,133 @@ async function askVisionJSON(system, imageDataUri, note) {
   const s = txt.indexOf("{"), e = txt.lastIndexOf("}");
   if (s >= 0 && e > s) txt = txt.slice(s, e + 1);
   return JSON.parse(txt);
+}
+
+async function askVisionJSON(system, imageDataUri, note) {
+  return askVisionPromptJSON(
+    system,
+    imageDataUri,
+    "这是老人收到并拍下来的截图/图片。" + (note ? "老人补充说：" + note : "") + " 请先认出图里的文字/收款信息，再判断是不是诈骗。"
+  );
+}
+
+const BARGAIN_VISION_SYS = `你是二手交易截图的信息提取工具。只提取截图中明确可见的事实，不推测市场价格，不评价买卖双方。
+只输出 JSON：
+{
+  "itemName": "截图中明确出现的商品名，没有则为空字符串",
+  "listingPrice": 110,
+  "offerPrice": 60,
+  "originalPrice": null,
+  "visibleFacts": ["最多3条截图中明确可见的事实"],
+  "chatSummary": "一句话概括对方如何议价"
+}
+价格只填数字。看不清或没有出现就填 null，绝不能猜。`;
+
+const BARGAIN_REASON_SYS = `你是二手交易议价助手“刀刀”。你要帮助卖家看清砍价幅度、证据边界和下一步动作。
+必须遵守：
+1. “砍价幅度大”不等于“挂牌价一定合理”。没有真实同款成交价时，不能断言市场价。
+2. 原价、品类和成色只能作为参考，不能编造当前新品价、成交价、平台行情或商品状态。
+3. 贴身用品、消耗品等可能折价较大，但不能仅凭品类给出确定市场价。
+4. 不攻击买家，不鼓励撒谎，不编造“很多人排队”“刚有人出更高价”等话术。
+5. 结论简短、自然、直接。若证据不足，要明确还缺什么。
+
+只输出 JSON：
+{
+  "verdict": "一句话判断这次砍价行为",
+  "boundary": "一句话说明目前能判断什么、不能判断什么",
+  "factors": ["最多3条有依据的判断因素"],
+  "missing": ["最多3条会影响市场价判断的缺失信息"],
+  "actionText": "一句不超过35字的下一步建议"
+}`;
+
+function priceNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) && value >= 0 ? Math.round(value * 100) / 100 : null;
+  const raw = String(value).trim();
+  if (!raw || raw.includes("-")) return null;
+  const normalized = raw.replace(/[^\d.]/g, "");
+  if (!normalized || (normalized.match(/\./g) || []).length > 1) return null;
+  const cleaned = Number(normalized);
+  return Number.isFinite(cleaned) && cleaned >= 0 ? Math.round(cleaned * 100) / 100 : null;
+}
+
+function shortText(value, max = 120) {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+function priceList(value) {
+  const source = Array.isArray(value) ? value : String(value || "").split(/[,，\s]+/);
+  return source.map(priceNumber).filter((n) => n !== null && n > 0).slice(0, 12);
+}
+
+function bargainLevel(percent) {
+  if (percent <= 10) return { label:"小刀可谈", tone:"mild" };
+  if (percent <= 25) return { label:"正常试价", tone:"normal" };
+  if (percent <= 40) return { label:"这刀偏狠", tone:"hard" };
+  return { label:"大刀慎接", tone:"extreme" };
+}
+
+function median(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) * 50) / 100;
+}
+
+function sellerScripts({ itemName, listingPrice, offerPrice, floorPrice, urgency }) {
+  const item = itemName ? `这件${itemName}` : "这件商品";
+  if (offerPrice >= listingPrice) {
+    return {
+      polite: `可以，${offerPrice}元我能接受，直接拍就好。`,
+      firm: `${item}${offerPrice}元可以出，按平台流程交易。`,
+      quick: `这个价格可以成交，拍下后我尽快发出。`,
+    };
+  }
+  if (floorPrice !== null) {
+    return {
+      polite: `谢谢喜欢，${offerPrice}元差距有点大，我最低${floorPrice}元，能接受的话可以直接拍。`,
+      firm: `${item}最低${floorPrice}元，${offerPrice}元不出。`,
+      quick: urgency === "尽快" ? `想尽快出，${floorPrice}元可以成交，合适就拍。` : `诚心要的话，${floorPrice}元可以成交。`,
+    };
+  }
+  return {
+    polite: `谢谢喜欢，${offerPrice}元差距有点大，可以小刀，但这个价格暂时不考虑。`,
+    firm: `${item}${offerPrice}元不出，和${listingPrice}元挂牌价差距太大。`,
+    quick: "诚心要可以再报一个接近挂牌价的价格，我确认后回复你。",
+  };
+}
+
+function fallbackBargain({ itemName, listingPrice, offerPrice, originalPrice, floorPrice, category, condition, comparablePrices, cutPercent, level }) {
+  const factors = [`对方从${listingPrice}元砍到${offerPrice}元，少了${Math.max(0, Math.round((listingPrice - offerPrice) * 100) / 100)}元`];
+  if (originalPrice !== null) factors.push(`当前挂牌价约为原价的${Math.round(listingPrice / originalPrice * 1000) / 10}%`);
+  if (category) factors.push(`品类是${category}${condition ? `，成色为${condition}` : ""}`);
+  const missing = [];
+  if (!comparablePrices.length) missing.push("同款近期真实成交价");
+  if (!condition) missing.push("更具体的使用痕迹和成色");
+  if (!itemName) missing.push("准确品牌、型号或款式");
+  const boundary = comparablePrices.length
+    ? "这能判断砍价幅度，并参考你提供的同款价格，仍不代表平台真实成交行情。"
+    : "目前只能判断这刀有多狠，挂牌价是否合理还要看同款真实成交价。";
+  const actionText = offerPrice >= listingPrice
+    ? "对方报价没有低于挂牌价，确认运费和交易条件后即可决定。"
+    : floorPrice === null
+      ? "先想清楚最低能接受多少钱，再决定回价。"
+    : offerPrice >= floorPrice
+      ? "报价没有低于你的底价，可以结合出手速度决定。"
+      : `报价低于你的${floorPrice}元底价，建议回到底价或直接拒绝。`;
+  return {
+    verdict: level.tone === "extreme" ? `这刀砍掉${cutPercent}%，幅度很大，别急着接。` : `这次砍价约${cutPercent}%，属于${level.label}。`,
+    boundary,
+    factors: factors.slice(0, 3),
+    missing: missing.slice(0, 3),
+    actionText,
+  };
+}
+
+function cleanStringArray(value, fallback) {
+  if (!Array.isArray(value)) return fallback;
+  const cleaned = value.map((v) => shortText(v, 80)).filter(Boolean).slice(0, 3);
+  return cleaned.length ? cleaned : fallback;
 }
 
 const FRAUD_SYS = `你是"省心扫"里为老年人服务的防骗管家。老人会把收到的短信/链接/收款要求念给你听，你要判断是不是诈骗，并用老人能听懂的大白话解释。
@@ -297,6 +425,102 @@ const MENU_SYS = `你是"省心扫"里帮老人看懂餐厅菜单的管家。给
 const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") return send(res, 204, "");
 
+  if (req.method === "POST" && req.url === "/api/bargain") {
+    try {
+      const body = await readBody(req);
+      let extracted = {};
+      let visionNotice = "";
+      const hasImage = typeof body.image === "string" && /^data:image\//.test(body.image);
+
+      if (hasImage && VISION_READY) {
+        try {
+          extracted = await askVisionPromptJSON(
+            BARGAIN_VISION_SYS,
+            body.image,
+            "请提取这张二手交易商品页或聊天截图中明确可见的商品名、挂牌价、买家报价和原价。看不清就留空，不要推测。"
+          );
+        } catch (error) {
+          visionNotice = "截图暂时没识别成功，已使用你手动填写的信息。";
+          console.error("[刀刀截图识别失败]", error.message || error);
+        }
+      } else if (hasImage) {
+        visionNotice = "当前未配置图片识别，已使用你手动填写的信息。";
+      }
+
+      const itemName = shortText(body.itemName, 60) || shortText(extracted.itemName, 60);
+      const listingPrice = priceNumber(body.listingPrice) ?? priceNumber(extracted.listingPrice);
+      const offerPrice = priceNumber(body.offerPrice) ?? priceNumber(extracted.offerPrice);
+      const originalPrice = priceNumber(body.originalPrice) ?? priceNumber(extracted.originalPrice);
+      const floorPrice = priceNumber(body.floorPrice);
+      const category = shortText(body.category, 30);
+      const condition = shortText(body.condition, 30);
+      const urgency = shortText(body.urgency, 10);
+      const note = shortText(body.note, 300);
+      const comparablePrices = priceList(body.comparablePrices);
+
+      if (listingPrice === null || listingPrice <= 0) {
+        const message = hasImage && !VISION_READY ? "当前图片识别未配置，请手动填写挂牌价" : "请上传清晰截图或填写有效的挂牌价";
+        return send(res, 400, { error:message });
+      }
+      if (offerPrice === null) {
+        const message = hasImage && !VISION_READY ? "当前图片识别未配置，请手动填写买家报价" : "请上传清晰截图或填写有效的买家报价";
+        return send(res, 400, { error:message });
+      }
+      if (originalPrice !== null && originalPrice <= 0) return send(res, 400, { error:"商品原价必须大于0" });
+      if (floorPrice !== null && floorPrice <= 0) return send(res, 400, { error:"心理底价必须大于0" });
+
+      const cutAmount = Math.max(0, Math.round((listingPrice - offerPrice) * 100) / 100);
+      const cutPercent = Math.round(Math.max(0, cutAmount / listingPrice * 100) * 10) / 10;
+      const level = bargainLevel(cutPercent);
+      const comparison = comparablePrices.length ? {
+        source:"你提供的同款参考价",
+        count:comparablePrices.length,
+        min:Math.min(...comparablePrices),
+        max:Math.max(...comparablePrices),
+        median:median(comparablePrices),
+      } : null;
+      const evidence = { itemName,listingPrice,offerPrice,originalPrice,floorPrice,category,condition,urgency,
+        note,comparablePrices,cutAmount,cutPercent,level:level.label,
+        screenshotFacts:cleanStringArray(extracted.visibleFacts,[]),chatSummary:shortText(extracted.chatSummary,120) };
+      const fallback = fallbackBargain({ ...evidence,level });
+      let reasoning = fallback;
+      let aiUsed = false;
+      let aiNotice = "";
+
+      if (LLM_READY) {
+        try {
+          const ai = await askJSON(BARGAIN_REASON_SYS, `请基于以下证据判断，数字和事实都不得自行补充：\n${JSON.stringify(evidence)}`);
+          reasoning = {
+            verdict: shortText(ai.verdict, 100) || fallback.verdict,
+            boundary: shortText(ai.boundary, 140) || fallback.boundary,
+            factors: cleanStringArray(ai.factors, fallback.factors),
+            missing: cleanStringArray(ai.missing, fallback.missing),
+            actionText: shortText(ai.actionText, 100) || fallback.actionText,
+          };
+          aiUsed = true;
+        } catch (error) {
+          aiNotice = "智能分析暂时不可用，已用价格规则完成判断。";
+          console.error("[刀刀分析失败]", error.message || error);
+        }
+      }
+
+      return send(res, 200, {
+        itemName:itemName || "这件商品",
+        listingPrice,offerPrice,originalPrice,floorPrice,cutAmount,cutPercent,
+        listingToOriginalPercent:originalPrice ? Math.round(listingPrice / originalPrice * 1000) / 10 : null,
+        level:level.label,tone:level.tone,comparison,
+        ...reasoning,
+        scripts:sellerScripts({ itemName,listingPrice,offerPrice,floorPrice,urgency }),
+        screenshotFacts:evidence.screenshotFacts,
+        analysisMode:aiUsed ? "AI辅助判断" : "价格规则判断",
+        notice:[visionNotice,aiNotice].filter(Boolean).join(" "),
+        disclaimer:"结果只用于议价参考，不代表平台真实成交价。",
+      });
+    } catch (error) {
+      return send(res, 500, { error:String(error.message || error) });
+    }
+  }
+
   if (req.method === "POST" && req.url === "/api/challenges") {
     const body = await readBody(req);
     const mode = body.mode === "blind" ? "blind" : "teaching";
@@ -433,8 +657,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   // static
-  const pathname = req.url.split("?")[0];
-  let f = pathname === "/" ? "/index.html" : pathname;
+  const requestUrl = new URL(req.url, "http://localhost");
+  const pathname = requestUrl.pathname;
+  let f = pathname;
+  if (pathname === "/") f = requestUrl.searchParams.has("challenge") ? "/index.html" : "/daodao.html";
+  if (pathname === "/legacy") f = "/index.html";
   const fp = path.join(__dirname, f);
   if (fp.startsWith(__dirname) && fs.existsSync(fp) && fs.statSync(fp).isFile()) {
     const ext = path.extname(fp);
@@ -446,4 +673,4 @@ const server = http.createServer(async (req, res) => {
 
 const DEFAULT_MENU = `【老李家饭馆·超值特惠】招牌爆款！西红柿鸡蛋盖浇饭￥18元（赠例汤）| 主厨推荐★清炒时令蔬菜￥12 | 老火慢炖·紫菜蛋花汤￥6 | 招牌红烧肉盖饭￥26（大份加3元）| 香辣鸡腿堡套餐￥22 | 现磨豆浆￥4/杯 | 米饭￥2/碗`;
 
-server.listen(PORT, () => console.log(`省心扫 AI demo on :${PORT} (model ${MODEL})`));
+server.listen(PORT, () => console.log(`刀刀 on :${PORT} (model ${MODEL})`));

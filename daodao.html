@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f2ec">
+  <title>刀刀｜二手交易砍价参谋</title>
+  <meta name="description" content="上传商品或聊天截图，看清对方刀了多少、该不该接，并生成可以直接发送的回复话术。">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg:#f4f2ec;
+      --paper:#fffef9;
+      --paper-2:#ebe8df;
+      --ink:#181816;
+      --muted:#68665f;
+      --line:#d8d4c9;
+      --accent:#ffd84d;
+      --accent-strong:#efb900;
+      --danger:#d9472f;
+      --success:#187b4b;
+      --shadow:0 20px 60px rgba(45,39,24,.09);
+      --radius:24px;
+      font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; min-height:100dvh; background:var(--bg); color:var(--ink); }
+    button,input,select,textarea { font:inherit; }
+    button { color:inherit; }
+    a { color:inherit; }
+    .shell { width:min(1120px,100%); margin:0 auto; padding:0 24px 48px; }
+    .topbar { min-height:74px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+    .brand { display:flex; align-items:center; gap:11px; font-size:23px; font-weight:900; letter-spacing:-1px; text-decoration:none; }
+    .brand-mark { position:relative; width:38px; height:38px; display:grid; place-items:center; border:2px solid var(--ink); background:var(--accent); border-radius:11px; box-shadow:3px 3px 0 var(--ink); font-size:22px; }
+    .brand-mark::after { content:""; position:absolute; width:22px; height:3px; background:currentColor; transform:rotate(-38deg); border-radius:4px; }
+    .legacy-link { color:var(--muted); font-size:14px; text-underline-offset:4px; }
+    .layout { display:grid; grid-template-columns:minmax(0,.86fr) minmax(440px,1.14fr); gap:70px; align-items:start; padding-top:48px; }
+    .hero { position:sticky; top:40px; padding-top:12px; }
+    .eyebrow { margin:0 0 18px; font-size:14px; font-weight:800; letter-spacing:.12em; color:var(--muted); }
+    h1 { max-width:650px; margin:0; font-size:clamp(48px,6vw,84px); line-height:.98; letter-spacing:-.075em; }
+    .slash { color:var(--danger); }
+    .lead { max-width:510px; margin:24px 0 0; font-size:21px; line-height:1.65; font-weight:650; }
+    .modes { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:36px; }
+    .mode { min-height:96px; padding:18px; border:1.5px solid var(--line); border-radius:18px; background:transparent; text-align:left; }
+    .mode strong { display:block; font-size:20px; margin-bottom:6px; }
+    .mode span { color:var(--muted); font-size:14px; line-height:1.5; }
+    .mode.active { border-color:var(--ink); background:var(--accent); box-shadow:4px 4px 0 var(--ink); }
+    .mode.soon { cursor:pointer; }
+    .trust { display:grid; gap:12px; margin:34px 0 0; padding:0; list-style:none; color:var(--muted); font-size:14px; }
+    .trust li { display:flex; align-items:flex-start; gap:9px; }
+    .trust li::before { content:"✓"; color:var(--success); font-weight:900; }
+    .card { border:1.5px solid var(--line); border-radius:var(--radius); background:var(--paper); box-shadow:var(--shadow); overflow:hidden; }
+    .form-head { padding:28px 30px 22px; border-bottom:1px solid var(--line); }
+    .step { margin:0 0 8px; color:var(--muted); font-size:13px; font-weight:800; letter-spacing:.08em; }
+    h2 { margin:0; font-size:28px; line-height:1.25; letter-spacing:-.035em; }
+    .sub { margin:9px 0 0; color:var(--muted); line-height:1.6; font-size:14px; }
+    .form-body { padding:24px 30px 30px; }
+    .uploader { min-height:152px; display:flex; align-items:center; justify-content:center; border:1.5px dashed #aaa69c; border-radius:18px; background:var(--paper-2); overflow:hidden; position:relative; }
+    .upload-empty { padding:24px; text-align:center; }
+    .upload-symbol { width:46px; height:46px; margin:0 auto 12px; display:grid; place-items:center; border:1.5px solid var(--ink); border-radius:50%; font-size:25px; font-weight:500; }
+    .upload-empty strong { display:block; font-size:17px; }
+    .upload-empty span { display:block; margin-top:7px; color:var(--muted); font-size:13px; }
+    .file-label { width:100%; cursor:pointer; }
+    #screenshot { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+    .preview { display:none; width:100%; padding:12px; position:relative; }
+    .preview img { display:block; width:100%; max-height:310px; object-fit:contain; border-radius:12px; background:#fff; }
+    .remove-image { position:absolute; top:20px; right:20px; width:36px; height:36px; border:1px solid var(--line); border-radius:50%; background:rgba(24,24,22,.82); color:#fff; cursor:pointer; font-size:20px; }
+    .privacy { margin:9px 2px 0; color:var(--muted); font-size:12px; line-height:1.55; }
+    .price-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:24px; }
+    .field { display:grid; gap:8px; }
+    .field label,.field-label { font-size:14px; font-weight:800; }
+    .required { color:var(--danger); }
+    .money { position:relative; }
+    .money::before { content:"¥"; position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:18px; }
+    input,select,textarea { width:100%; border:1.5px solid var(--line); border-radius:13px; background:var(--paper); color:var(--ink); outline:none; transition:border-color .18s,box-shadow .18s; }
+    input,select { height:52px; padding:0 14px; }
+    .money input { padding-left:35px; font-size:20px; font-weight:800; }
+    textarea { min-height:82px; resize:vertical; padding:13px 14px; line-height:1.5; }
+    input:focus,select:focus,textarea:focus { border-color:var(--ink); box-shadow:0 0 0 3px rgba(255,216,77,.55); }
+    details { margin-top:18px; border-top:1px solid var(--line); }
+    summary { cursor:pointer; padding:18px 0 4px; font-weight:800; list-style:none; }
+    summary::-webkit-details-marker { display:none; }
+    summary::after { content:"＋"; float:right; font-size:20px; font-weight:400; }
+    details[open] summary::after { content:"−"; }
+    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; padding-top:15px; }
+    .detail-grid .wide { grid-column:1 / -1; }
+    .helper { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
+    .actions { display:grid; grid-template-columns:1fr auto; gap:10px; margin-top:24px; }
+    .primary,.secondary,.copy-btn,.again { min-height:54px; border-radius:14px; border:1.5px solid var(--ink); font-weight:900; cursor:pointer; }
+    .primary { background:var(--accent); box-shadow:4px 4px 0 var(--ink); font-size:17px; }
+    .primary:hover { background:var(--accent-strong); }
+    .primary:active { transform:translate(2px,2px); box-shadow:2px 2px 0 var(--ink); }
+    .primary:disabled { opacity:.55; cursor:wait; }
+    .secondary { padding:0 16px; background:transparent; border-color:var(--line); }
+    .status { min-height:22px; margin:16px 2px 0; color:var(--danger); font-size:13px; line-height:1.5; }
+    .loading { display:none; padding:50px 30px; }
+    .loading-mark { width:56px; height:56px; margin:0 auto 24px; border:6px solid var(--paper-2); border-top-color:var(--ink); border-radius:50%; animation:spin .8s linear infinite; }
+    .loading h2,.loading p { text-align:center; }
+    .loading p { color:var(--muted); }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .result { display:none; }
+    .result-hero { padding:30px; background:var(--accent); border-bottom:1.5px solid var(--ink); }
+    .result-top { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+    .result-label { display:inline-block; margin-bottom:18px; padding:6px 10px; border:1.5px solid var(--ink); border-radius:8px; background:var(--paper); font-size:13px; font-weight:900; }
+    .percent { margin:0; font-size:68px; line-height:.9; letter-spacing:-.075em; font-weight:950; }
+    .percent small { font-size:25px; letter-spacing:-.02em; }
+    .price-line { margin:18px 0 0; font-size:17px; font-weight:750; }
+    .mode-tag { font-size:12px; color:#35342f; white-space:nowrap; }
+    .result-body { padding:26px 30px 30px; }
+    .metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+    .metric { min-height:84px; padding:13px; border:1px solid var(--line); border-radius:14px; }
+    .metric span { color:var(--muted); font-size:12px; line-height:1.4; }
+    .metric strong { display:block; margin-top:8px; font-size:18px; }
+    .verdict { margin-top:23px; padding:19px; border-left:5px solid var(--danger); background:var(--paper-2); border-radius:0 14px 14px 0; }
+    .verdict strong { display:block; font-size:20px; line-height:1.45; }
+    .verdict p { margin:9px 0 0; color:var(--muted); line-height:1.6; font-size:14px; }
+    .section { margin-top:27px; }
+    .section h3 { margin:0 0 13px; font-size:17px; }
+    .fact-list { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+    .fact-list li { padding:11px 13px; background:var(--paper-2); border-radius:10px; font-size:14px; line-height:1.5; }
+    .action-box { padding:16px 18px; border:1.5px solid var(--ink); border-radius:14px; font-weight:750; line-height:1.55; }
+    .scripts { display:grid; gap:11px; }
+    .script { border:1px solid var(--line); border-radius:14px; padding:15px; }
+    .script-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:9px; }
+    .script-head strong { font-size:14px; }
+    .script p { margin:0; font-size:15px; line-height:1.65; }
+    .copy-btn { min-height:34px; padding:0 11px; background:transparent; border-color:var(--line); font-size:12px; }
+    .copy-btn.copied { border-color:var(--success); color:var(--success); }
+    .notice { margin-top:18px; color:var(--muted); font-size:12px; line-height:1.55; }
+    .again { width:100%; margin-top:23px; background:var(--ink); color:var(--paper); }
+    .toast { position:fixed; left:50%; bottom:max(24px,env(safe-area-inset-bottom)); transform:translate(-50%,16px); max-width:calc(100% - 32px); padding:12px 17px; border-radius:12px; background:var(--ink); color:var(--paper); font-size:14px; opacity:0; pointer-events:none; transition:.2s; z-index:20; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    .footer { padding:44px 0 0; text-align:center; color:var(--muted); font-size:12px; }
+    @media (max-width:860px) {
+      .shell { padding:0 18px 36px; }
+      .layout { grid-template-columns:1fr; gap:30px; padding-top:20px; }
+      .hero { position:static; padding-top:8px; }
+      h1 { font-size:clamp(48px,14vw,72px); max-width:600px; }
+      .lead { margin-top:18px; font-size:18px; }
+      .trust { display:none; }
+      .modes { margin-top:26px; }
+      .card { max-width:620px; width:100%; margin:0 auto; }
+    }
+    @media (max-width:520px) {
+      .shell { padding:0 13px 30px; }
+      .topbar { min-height:64px; }
+      .legacy-link { font-size:12px; }
+      .layout { padding-top:12px; gap:24px; }
+      h1 { font-size:50px; }
+      .lead { font-size:17px; }
+      .modes { gap:9px; }
+      .mode { min-height:88px; padding:14px; }
+      .mode strong { font-size:17px; }
+      .form-head,.form-body,.result-body { padding-left:20px; padding-right:20px; }
+      .form-head { padding-top:23px; }
+      h2 { font-size:24px; }
+      .price-grid,.detail-grid { grid-template-columns:1fr; }
+      .detail-grid .wide { grid-column:auto; }
+      .actions { grid-template-columns:1fr; }
+      .secondary { order:2; }
+      .result-hero { padding:25px 20px; }
+      .percent { font-size:58px; }
+      .metrics { grid-template-columns:1fr 1fr; }
+      .metric:last-child { grid-column:1 / -1; }
+    }
+    @media (prefers-color-scheme:dark) {
+      :root { color-scheme:dark; --bg:#171714; --paper:#22221e; --paper-2:#2c2c27; --ink:#f5f2e9; --muted:#aaa79e; --line:#45443d; --accent:#f3c83d; --accent-strong:#d9aa18; --danger:#ff7b62; --success:#65ce99; --shadow:0 22px 70px rgba(0,0,0,.24); }
+      .brand-mark,.mode.active,.result-hero { color:#181816; border-color:#181816; }
+      .brand-mark { box-shadow:3px 3px 0 #f5f2e9; }
+      .mode.active { box-shadow:4px 4px 0 #f5f2e9; }
+      .primary { color:#181816; border-color:#f5f2e9; box-shadow:4px 4px 0 #f5f2e9; }
+      .preview img { background:#fff; }
+      .mode-tag { color:#35342f; }
+      .result-label { background:#fffef9; color:#181816; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      html { scroll-behavior:auto; }
+      *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="刀刀首页"><span class="brand-mark" aria-hidden="true"></span><span>刀刀</span></a>
+      <a class="legacy-link" href="/index.html">省心扫旧版</a>
+    </header>
+
+    <main class="layout">
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="eyebrow">二手交易砍价参谋</p>
+        <h1 id="hero-title">一拍就知道，<br>这刀<span class="slash">离不离谱。</span></h1>
+        <p class="lead">上传商品或聊天截图，看清对方刀了多少、该不该接，再拿一段能直接发出去的回复。</p>
+        <div class="modes" aria-label="使用身份">
+          <div class="mode active"><strong>我被刀了</strong><span>卖家看报价，决定接不接</span></div>
+          <button class="mode soon" id="buyerSoon" type="button"><strong>我想出刀</strong><span>买家版即将上线</span></button>
+        </div>
+        <ul class="trust">
+          <li>只根据你提供的信息判断，不编造平台行情</li>
+          <li>不需要登录，不收集交易账号和联系方式</li>
+          <li>给结论，也把证据不足的地方说清楚</li>
+        </ul>
+      </section>
+
+      <section class="card" id="analyzer" aria-label="砍价分析工具">
+        <form id="bargainForm">
+          <div class="form-head">
+            <p class="step">卖家侧测试版</p>
+            <h2>这刀该不该接？</h2>
+            <p class="sub">先上传截图，必要时再补充或修正价格。</p>
+          </div>
+          <div class="form-body">
+            <div class="uploader" id="dropZone">
+              <label class="upload-empty file-label" id="uploadEmpty" for="screenshot">
+                <span class="upload-symbol" aria-hidden="true">＋</span>
+                <strong>上传商品或聊天截图</strong>
+                <span>支持 JPG、PNG，最多 10MB</span>
+              </label>
+              <span class="preview" id="previewWrap">
+                <img id="previewImage" alt="待分析截图预览">
+                <button class="remove-image" id="removeImage" type="button" aria-label="删除截图">×</button>
+              </span>
+              <input id="screenshot" name="screenshot" type="file" accept="image/jpeg,image/png,image/webp">
+            </div>
+            <p class="privacy">请先遮住姓名、电话、地址等隐私。图片只用于本次判断。</p>
+
+            <div class="price-grid">
+              <div class="field">
+                <label for="listingPrice">我的挂牌价 <span class="helper">截图可识别</span></label>
+                <div class="money"><input id="listingPrice" name="listingPrice" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="110"></div>
+              </div>
+              <div class="field">
+                <label for="offerPrice">对方报价 <span class="helper">截图可识别</span></label>
+                <div class="money"><input id="offerPrice" name="offerPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="60"></div>
+              </div>
+            </div>
+
+            <details>
+              <summary>补充信息，让判断更靠谱</summary>
+              <div class="detail-grid">
+                <div class="field wide">
+                  <label for="itemName">商品名称</label>
+                  <input id="itemName" name="itemName" maxlength="60" placeholder="例如：某品牌骑行裤">
+                </div>
+                <div class="field">
+                  <label for="originalPrice">商品原价</label>
+                  <div class="money"><input id="originalPrice" name="originalPrice" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="400"></div>
+                </div>
+                <div class="field">
+                  <label for="floorPrice">我的心理底价</label>
+                  <div class="money"><input id="floorPrice" name="floorPrice" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="95"></div>
+                </div>
+                <div class="field">
+                  <label for="category">商品类型</label>
+                  <select id="category" name="category">
+                    <option value="">请选择</option>
+                    <option>贴身或消耗类</option>
+                    <option>数码产品</option>
+                    <option>普通服饰</option>
+                    <option>运动装备</option>
+                    <option>家居用品</option>
+                    <option>其他</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="condition">使用成色</label>
+                  <select id="condition" name="condition">
+                    <option value="">请选择</option>
+                    <option>全新未使用</option>
+                    <option>仅试用</option>
+                    <option>轻度使用</option>
+                    <option>明显使用</option>
+                  </select>
+                </div>
+                <div class="field wide">
+                  <label for="comparablePrices">我查到的同款参考价</label>
+                  <input id="comparablePrices" name="comparablePrices" inputmode="decimal" placeholder="例如：90，105，120">
+                  <p class="helper">填真实同款的挂牌或成交价，用逗号分开。系统不会自己编行情。</p>
+                </div>
+                <div class="field">
+                  <label for="urgency">出手速度</label>
+                  <select id="urgency" name="urgency"><option>不急</option><option>普通</option><option>尽快</option></select>
+                </div>
+                <div class="field wide">
+                  <label for="note">其他说明</label>
+                  <textarea id="note" name="note" maxlength="300" placeholder="例如：穿过三次，无破损，包邮"></textarea>
+                </div>
+              </div>
+            </details>
+
+            <div class="actions">
+              <button class="primary" id="submitButton" type="submit">帮我看看这刀</button>
+              <button class="secondary" id="demoButton" type="button">试试骑行裤示例</button>
+            </div>
+            <p class="status" id="formStatus" role="alert"></p>
+          </div>
+        </form>
+
+        <div class="loading" id="loading" aria-live="polite">
+          <div class="loading-mark" aria-hidden="true"></div>
+          <h2>正在量这把刀</h2>
+          <p>先算砍价幅度，再核对证据边界。</p>
+        </div>
+
+        <article class="result" id="result" aria-live="polite">
+          <div class="result-hero">
+            <div class="result-top">
+              <div><span class="result-label" id="resultLabel">大刀慎接</span><p class="percent"><span id="cutPercent">45.5</span><small>%</small></p></div>
+              <span class="mode-tag" id="analysisMode">价格规则判断</span>
+            </div>
+            <p class="price-line" id="priceLine"></p>
+          </div>
+          <div class="result-body">
+            <div class="metrics">
+              <div class="metric"><span>一共刀掉</span><strong id="cutAmount"></strong></div>
+              <div class="metric"><span>挂牌价是原价</span><strong id="originalRatio"></strong></div>
+              <div class="metric"><span>你给的参考价</span><strong id="comparison"></strong></div>
+            </div>
+            <div class="verdict"><strong id="verdict"></strong><p id="boundary"></p></div>
+
+            <section class="section">
+              <h3>为什么这么判断</h3>
+              <ul class="fact-list" id="factors"></ul>
+            </section>
+            <section class="section" id="missingSection">
+              <h3>还缺这些信息</h3>
+              <ul class="fact-list" id="missing"></ul>
+            </section>
+            <section class="section">
+              <h3>建议怎么做</h3>
+              <div class="action-box" id="actionText"></div>
+            </section>
+            <section class="section">
+              <h3>选一句直接发</h3>
+              <div class="scripts">
+                <div class="script"><div class="script-head"><strong>客气回价</strong><button class="copy-btn" type="button" data-copy="polite">复制</button></div><p id="scriptPolite"></p></div>
+                <div class="script"><div class="script-head"><strong>明确底线</strong><button class="copy-btn" type="button" data-copy="firm">复制</button></div><p id="scriptFirm"></p></div>
+                <div class="script"><div class="script-head"><strong>想快点出</strong><button class="copy-btn" type="button" data-copy="quick">复制</button></div><p id="scriptQuick"></p></div>
+              </div>
+            </section>
+            <p class="notice" id="resultNotice"></p>
+            <button class="again" id="againButton" type="button">再判断一单</button>
+          </div>
+        </article>
+      </section>
+    </main>
+    <footer class="footer">刀刀提供议价参考，不代替真实市场调查和交易判断。</footer>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const form = document.getElementById("bargainForm");
+    const fileInput = document.getElementById("screenshot");
+    const previewWrap = document.getElementById("previewWrap");
+    const previewImage = document.getElementById("previewImage");
+    const uploadEmpty = document.getElementById("uploadEmpty");
+    const removeImage = document.getElementById("removeImage");
+    const loading = document.getElementById("loading");
+    const result = document.getElementById("result");
+    const status = document.getElementById("formStatus");
+    const toast = document.getElementById("toast");
+    let imageData = "";
+    let latestScripts = {};
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function resetImage() {
+      imageData = "";
+      fileInput.value = "";
+      previewImage.removeAttribute("src");
+      previewWrap.style.display = "none";
+      uploadEmpty.style.display = "block";
+    }
+
+    function compressImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("图片读取失败"));
+        reader.onload = () => {
+          const image = new Image();
+          image.onerror = () => reject(new Error("图片格式无法识别"));
+          image.onload = () => {
+            const maxSide = 1600;
+            const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(image.width * scale));
+            canvas.height = Math.max(1, Math.round(image.height * scale));
+            canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL("image/jpeg", .84));
+          };
+          image.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) { status.textContent = "请选择图片文件。"; return resetImage(); }
+      if (file.size > 10 * 1024 * 1024) { status.textContent = "图片超过10MB，请换一张更小的。"; return resetImage(); }
+      try {
+        status.textContent = "正在处理图片...";
+        imageData = await compressImage(file);
+        previewImage.src = imageData;
+        previewWrap.style.display = "block";
+        uploadEmpty.style.display = "none";
+        status.textContent = "";
+      } catch (error) {
+        status.textContent = error.message;
+        resetImage();
+      }
+    });
+
+    removeImage.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); resetImage(); });
+    document.getElementById("buyerSoon").addEventListener("click", () => showToast("买家出刀版正在准备，先用卖家版。"));
+
+    document.getElementById("demoButton").addEventListener("click", () => {
+      document.querySelector("details").open = true;
+      document.getElementById("listingPrice").value = "110";
+      document.getElementById("offerPrice").value = "60";
+      document.getElementById("itemName").value = "骑行裤";
+      document.getElementById("originalPrice").value = "400";
+      document.getElementById("floorPrice").value = "95";
+      document.getElementById("category").value = "贴身或消耗类";
+      document.getElementById("condition").value = "轻度使用";
+      document.getElementById("note").value = "穿过几次，无明显破损，挂牌110元包邮。";
+      form.requestSubmit();
+    });
+
+    function setList(id, items) {
+      const list = document.getElementById(id);
+      list.replaceChildren();
+      (items || []).forEach((text) => {
+        const li = document.createElement("li");
+        li.textContent = text;
+        list.appendChild(li);
+      });
+    }
+
+    function money(value) {
+      return value === null || value === undefined ? "未填写" : `¥${Number(value).toLocaleString("zh-CN", { maximumFractionDigits:2 })}`;
+    }
+
+    function renderResult(data) {
+      document.getElementById("resultLabel").textContent = data.level;
+      document.getElementById("cutPercent").textContent = data.cutPercent;
+      document.getElementById("analysisMode").textContent = data.analysisMode;
+      document.getElementById("priceLine").textContent = `对方想从 ${money(data.listingPrice)} 刀到 ${money(data.offerPrice)}`;
+      document.getElementById("cutAmount").textContent = money(data.cutAmount);
+      document.getElementById("originalRatio").textContent = data.listingToOriginalPercent === null ? "未填写" : `${data.listingToOriginalPercent}%`;
+      document.getElementById("comparison").textContent = data.comparison ? `${money(data.comparison.min)} 到 ${money(data.comparison.max)}` : "未提供";
+      document.getElementById("verdict").textContent = data.verdict;
+      document.getElementById("boundary").textContent = data.boundary;
+      setList("factors", data.factors);
+      setList("missing", data.missing);
+      document.getElementById("missingSection").style.display = data.missing && data.missing.length ? "block" : "none";
+      document.getElementById("actionText").textContent = data.actionText;
+      latestScripts = data.scripts || {};
+      document.getElementById("scriptPolite").textContent = latestScripts.polite || "";
+      document.getElementById("scriptFirm").textContent = latestScripts.firm || "";
+      document.getElementById("scriptQuick").textContent = latestScripts.quick || "";
+      document.getElementById("resultNotice").textContent = [data.notice, data.disclaimer].filter(Boolean).join(" ");
+      loading.style.display = "none";
+      result.style.display = "block";
+      result.scrollIntoView({ behavior:matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"start" });
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      status.textContent = "";
+      if (!form.reportValidity()) return;
+      const fields = Object.fromEntries(new FormData(form).entries());
+      delete fields.screenshot;
+      if (imageData) fields.image = imageData;
+      form.style.display = "none";
+      result.style.display = "none";
+      loading.style.display = "block";
+      try {
+        const response = await fetch("/api/bargain", { method:"POST",headers:{ "Content-Type":"application/json" },body:JSON.stringify(fields) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "分析失败，请稍后再试");
+        renderResult(data);
+      } catch (error) {
+        loading.style.display = "none";
+        form.style.display = "block";
+        status.textContent = error.message;
+      }
+    });
+
+    document.querySelectorAll("[data-copy]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const text = latestScripts[button.dataset.copy] || "";
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const area = document.createElement("textarea");
+          area.value = text; document.body.appendChild(area); area.select(); document.execCommand("copy"); area.remove();
+        }
+        button.textContent = "已复制";
+        button.classList.add("copied");
+        setTimeout(() => { button.textContent = "复制"; button.classList.remove("copied"); }, 1600);
+      });
+    });
+
+    document.getElementById("againButton").addEventListener("click", () => {
+      result.style.display = "none";
+      form.style.display = "block";
+      status.textContent = "";
+      document.getElementById("analyzer").scrollIntoView({ behavior:"smooth", block:"start" });
+    });
+  </script>
+</body>
+</html>

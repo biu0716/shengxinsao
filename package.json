@@ -1,7 +1,7 @@
 {
   "name": "shengxinsao",
   "version": "0.1.0",
-  "description": "省心扫 - 给爸妈的防骗陪练（模拟来电 + 家庭守护）",
+  "description": "刀刀 - 二手交易砍价判断与回复话术工具",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
