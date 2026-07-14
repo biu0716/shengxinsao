@@ -31,14 +31,21 @@ const VISION_KEY = process.env.VISION_API_KEY || process.env.AI_GATEWAY_API_KEY 
 const VISION_MODEL = process.env.VISION_MODEL || "google/gemini-3.5-flash";
 const VISION_READY = !!(VISION_URL && VISION_KEY);
 
-// ---- 联网查价（Gemini Google Search Grounding）----
-// 推荐单独设置 SEARCH_API_KEY；若视觉接口使用 Google 官方地址，可复用同一 Gemini Key。
+// ---- 联网查价（Google Search Grounding / OpenRouter Web Search）----
+// 推荐单独设置 SEARCH_API_KEY；也可安全复用已配置的 Google 或 OpenRouter 密钥。
 const SEARCH_URL = process.env.SEARCH_URL || "https://generativelanguage.googleapis.com/v1beta/interactions";
 const SEARCH_KEY = process.env.SEARCH_API_KEY || process.env.GEMINI_API_KEY
   || (VISION_URL.includes("generativelanguage.googleapis.com") ? VISION_KEY : "");
 const SEARCH_MODEL = process.env.SEARCH_MODEL
   || (VISION_MODEL.replace(/^google\//, "").startsWith("gemini-") ? VISION_MODEL.replace(/^google\//, "") : "gemini-2.5-flash");
-const SEARCH_READY = !!SEARCH_KEY;
+const OPENROUTER_SEARCH_URL = process.env.OPENROUTER_SEARCH_URL
+  || (VISION_URL.includes("openrouter.ai") ? VISION_URL : LLM_URL.includes("openrouter.ai") ? LLM_URL : "");
+const OPENROUTER_SEARCH_KEY = process.env.OPENROUTER_SEARCH_API_KEY
+  || (VISION_URL.includes("openrouter.ai") ? VISION_KEY : LLM_URL.includes("openrouter.ai") ? LLM_KEY : "");
+const OPENROUTER_SEARCH_MODEL = process.env.OPENROUTER_SEARCH_MODEL
+  || (VISION_URL.includes("openrouter.ai") ? VISION_MODEL : MODEL);
+const SEARCH_PROVIDER = SEARCH_KEY ? "google" : OPENROUTER_SEARCH_URL && OPENROUTER_SEARCH_KEY ? "openrouter" : "";
+const SEARCH_READY = !!SEARCH_PROVIDER;
 const MARKET_RESEARCH_CACHE = new Map();
 
 function send(res, code, body, type = "application/json") {
@@ -408,11 +415,14 @@ async function researchMarket(input) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 18000);
   try {
-    const response = await fetch(SEARCH_URL, {
-      method:"POST",
-      headers:{ "x-goog-api-key":SEARCH_KEY,"Content-Type":"application/json","Accept-Encoding":"identity" },
-      body:JSON.stringify({ model:SEARCH_MODEL,input:marketResearchPrompt(input),tools:[{ type:"google_search" }] }),
-      signal:controller.signal,
+    const prompt = marketResearchPrompt(input);
+    const isGoogle = SEARCH_PROVIDER === "google";
+    const response = await fetch(isGoogle ? SEARCH_URL : OPENROUTER_SEARCH_URL, isGoogle ? {
+      method:"POST",headers:{ "x-goog-api-key":SEARCH_KEY,"Content-Type":"application/json","Accept-Encoding":"identity" },
+      body:JSON.stringify({ model:SEARCH_MODEL,input:prompt,tools:[{ type:"google_search" }] }),signal:controller.signal,
+    } : {
+      method:"POST",headers:{ "Authorization":`Bearer ${OPENROUTER_SEARCH_KEY}`,"Content-Type":"application/json","Accept-Encoding":"identity" },
+      body:JSON.stringify({ model:OPENROUTER_SEARCH_MODEL,messages:[{ role:"user",content:prompt }],plugins:[{ id:"web",max_results:5 }],temperature:0.1,max_tokens:1200 }),signal:controller.signal,
     });
     if (!response.ok) {
       const body = await response.text();
@@ -426,7 +436,11 @@ async function researchMarket(input) {
     if (!contentBlocks.length && Array.isArray(data.output)) {
       for (const output of data.output) if (Array.isArray(output?.content)) contentBlocks.push(...output.content.filter((block) => block?.type === "text"));
     }
-    const outputText = contentBlocks.map((block) => block.text || "").join("\n") || data.output_text || "";
+    const chatMessage = data.choices?.[0]?.message;
+    const chatContent = Array.isArray(chatMessage?.content)
+      ? chatMessage.content.map((block) => typeof block === "string" ? block : block?.text || "").join("\n")
+      : chatMessage?.content || "";
+    const outputText = contentBlocks.map((block) => block.text || "").join("\n") || data.output_text || chatContent || "";
     const parsed = parseJSONObject(outputText);
     const sourceMap = new Map();
     for (const block of contentBlocks) {
@@ -439,6 +453,16 @@ async function researchMarket(input) {
           if (!sourceMap.has(url)) sourceMap.set(url, { title:shortText(annotation.title,80) || parsedUrl.hostname,url });
         } catch {}
       }
+    }
+    for (const annotation of Array.isArray(chatMessage?.annotations) ? chatMessage.annotations : []) {
+      if (annotation?.type !== "url_citation") continue;
+      const citation = annotation.url_citation || annotation;
+      const url = shortText(citation.url, 500);
+      try {
+        const parsedUrl = new URL(url);
+        if (!/^https?:$/.test(parsedUrl.protocol)) continue;
+        if (!sourceMap.has(url)) sourceMap.set(url, { title:shortText(citation.title,80) || parsedUrl.hostname,url });
+      } catch {}
     }
     const sources = [...sourceMap.values()].slice(0, 6);
     if (!sources.length) return unavailableResearch("limited", "查到了相关内容，但没有可展示的引用来源，因此没有采用其中的价格。");
