@@ -32,7 +32,13 @@ const VISION_MODEL = process.env.VISION_MODEL || "google/gemini-3.5-flash";
 const VISION_READY = !!(VISION_URL && VISION_KEY);
 
 function send(res, code, body, type = "application/json") {
-  res.writeHead(code, { "Content-Type": type, "Access-Control-Allow-Origin": "*" });
+  res.writeHead(code, {
+    "Content-Type": type,
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+  });
   if (Buffer.isBuffer(body) || typeof body === "string") res.end(body);
   else res.end(JSON.stringify(body));
 }
