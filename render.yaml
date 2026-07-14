@@ -1,5 +1,5 @@
 # Render 蓝图：在 Render 里 New → Blueprint，选中包含本文件的仓库即可自动建服务。
-# 部署后记得在服务的 Environment 里补上 LLM_API_KEY（密钥不写进仓库）。
+# 部署后记得在服务的 Environment 里补上 LLM_API_KEY 和 SEARCH_API_KEY（密钥不写进仓库）。
 services:
   - type: web
     name: shengxinsao
@@ -14,3 +14,7 @@ services:
         value: deepseek-chat
       - key: LLM_API_KEY
         sync: false   # 在 Render 后台手动填写，不进仓库
+      - key: SEARCH_MODEL
+        value: gemini-2.5-flash
+      - key: SEARCH_API_KEY
+        sync: false   # Google AI Studio 的 Gemini Key，只用于联网查价
