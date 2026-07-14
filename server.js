@@ -378,7 +378,7 @@ function cleanStringArray(value, fallback) {
 
 function userConfirmationArray(value, fallback) {
   const filtered = cleanStringArray(value, fallback).filter((item) =>
-    !/(成交价|市场价|行情|新品价|参考价|购买意图|急迫性|急不急)/.test(item)
+    !/(成交价|市场价|行情|新品.{0,4}价|售价|挂牌价|同款.{0,8}价|类似.{0,8}价|平台.{0,8}价|二手.{0,8}价|购买意图|急迫性|急不急)/.test(item)
   );
   return filtered.length ? filtered : fallback;
 }
