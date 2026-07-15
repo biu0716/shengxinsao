@@ -87,6 +87,12 @@
     .description-box textarea { min-height:98px; background:var(--paper); }
     .voice-status { min-height:18px; margin:8px 1px 0; }
     .price-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:24px; }
+    .decision-block { margin-top:18px; padding:17px; border:1.5px solid var(--line); border-radius:16px; background:var(--paper-2); }
+    .decision-head { margin-bottom:15px; }
+    .decision-head h3 { margin:0; font-size:17px; }
+    .decision-head p { margin:5px 0 0; color:var(--muted); font-size:12px; line-height:1.5; }
+    .context-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .context-grid .wide { grid-column:1 / -1; }
     .field { display:grid; gap:8px; }
     .field label,.field-label { font-size:14px; font-weight:800; }
     .required { color:var(--danger); }
@@ -143,6 +149,17 @@
     .research-panel { padding:18px; border:1.5px solid var(--ink); border-radius:14px; background:var(--paper); }
     .research-panel.unavailable { border-color:var(--line); background:var(--paper-2); }
     .research-summary { margin:0; font-size:15px; font-weight:750; line-height:1.6; }
+    .price-suggestion { margin-top:16px; padding:16px; border:1.5px solid var(--ink); border-radius:14px; background:rgba(255,216,77,.16); }
+    .price-suggestion.unavailable { border-color:var(--line); background:var(--paper-2); }
+    .suggestion-label { display:block; color:var(--muted); font-size:12px; font-weight:800; }
+    .suggestion-range { display:block; margin-top:7px; font-size:28px; line-height:1.1; letter-spacing:-.035em; }
+    .suggestion-detail { margin:9px 0 0; color:var(--muted); font-size:13px; line-height:1.55; }
+    .suggestion-stats { display:flex; flex-wrap:wrap; gap:7px 16px; margin-top:11px; font-size:12px; font-weight:750; }
+    .sample-list { display:grid; gap:7px; margin-top:14px; }
+    .sample-link { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding-top:9px; border-top:1px solid var(--line); color:var(--ink); text-decoration:none; }
+    .sample-link span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+    .sample-link small { display:block; margin-top:3px; color:var(--muted); font-size:11px; }
+    .sample-link strong { font-size:14px; white-space:nowrap; }
     .market-ranges { margin-top:15px; border-top:1px solid var(--line); }
     .market-range { display:grid; grid-template-columns:125px 1fr; gap:12px; padding:13px 0; border-bottom:1px solid var(--line); }
     .market-range:last-child { border-bottom:0; padding-bottom:2px; }
@@ -193,9 +210,9 @@
       .form-head,.form-body,.result-body { padding-left:20px; padding-right:20px; }
       .form-head { padding-top:23px; }
       h2 { font-size:24px; }
-      .price-grid,.detail-grid { grid-template-columns:1fr; }
+      .price-grid,.context-grid,.detail-grid { grid-template-columns:1fr; }
       .description-head { align-items:flex-start; }
-      .detail-grid .wide { grid-column:auto; }
+      .context-grid .wide,.detail-grid .wide { grid-column:auto; }
       .actions { grid-template-columns:1fr; }
       .secondary { order:2; }
       .result-hero { padding:25px 20px; }
@@ -293,6 +310,40 @@
               </div>
             </div>
 
+            <div class="decision-block">
+              <div class="decision-head">
+                <h3>再确认 3 件事</h3>
+                <p>成色、使用情况和议价态度会影响同款筛选与建议价格。</p>
+              </div>
+              <div class="context-grid">
+                <div class="field">
+                  <label for="condition">商品成色 <span class="required">必填</span></label>
+                  <select id="condition" name="condition" required>
+                    <option value="">请选择真实成色</option>
+                    <option>全新未使用</option>
+                    <option>仅试用</option>
+                    <option>轻度使用</option>
+                    <option>明显使用</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="negotiationPreference">是否接受议价 <span class="required">必填</span></label>
+                  <select id="negotiationPreference" name="negotiationPreference" required>
+                    <option value="">请选择</option>
+                    <option>不接受议价</option>
+                    <option>可以小刀</option>
+                    <option>接近心理底价可出</option>
+                    <option>想尽快出，可以多谈</option>
+                  </select>
+                </div>
+                <div class="field wide">
+                  <label for="usageDetails">使用情况 <span class="required">必填</span></label>
+                  <input id="usageDetails" name="usageDetails" maxlength="120" required placeholder="例如：穿过3次，已清洗，无破损和明显磨损">
+                  <p class="helper">请写真实使用次数、时长、清洁情况和瑕疵。</p>
+                </div>
+              </div>
+            </div>
+
             <details>
               <summary>补充信息，让判断更靠谱</summary>
               <div class="detail-grid">
@@ -314,16 +365,6 @@
                     <option>运动装备</option>
                     <option>家居用品</option>
                     <option>其他</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="condition">使用成色</label>
-                  <select id="condition" name="condition">
-                    <option value="">请选择</option>
-                    <option>全新未使用</option>
-                    <option>仅试用</option>
-                    <option>轻度使用</option>
-                    <option>明显使用</option>
                   </select>
                 </div>
                 <div class="field wide">
@@ -376,6 +417,13 @@
               <div class="research-title"><h3>刀刀联网查到</h3><span class="research-confidence" id="researchConfidence"></span></div>
               <div class="research-panel" id="researchPanel">
                 <p class="research-summary" id="researchSummary"></p>
+                <div class="price-suggestion unavailable" id="priceSuggestion">
+                  <span class="suggestion-label" id="suggestionLabel">建议回价参考</span>
+                  <strong class="suggestion-range" id="suggestionRange">样本不足，暂不建议价格</strong>
+                  <p class="suggestion-detail" id="suggestionDetail">至少需要3条带原始链接的同款二手挂牌样本。</p>
+                  <div class="suggestion-stats" id="suggestionStats"></div>
+                  <div class="sample-list" id="comparableSamples"></div>
+                </div>
                 <div class="market-ranges" id="marketRanges"></div>
                 <ul class="research-observations" id="researchObservations"></ul>
                 <div class="source-links" id="sourceLinks"></div>
@@ -658,7 +706,9 @@
       document.getElementById("originalPrice").value = "";
       document.getElementById("floorPrice").value = "";
       document.getElementById("category").value = "";
-      document.getElementById("condition").value = "";
+      document.getElementById("condition").value = "轻度使用";
+      document.getElementById("negotiationPreference").value = "可以小刀";
+      document.getElementById("usageDetails").value = "穿过3次，已清洗，无破损和明显磨损";
       document.getElementById("note").value = "";
       form.requestSubmit();
     });
@@ -684,9 +734,34 @@
       const ranges = document.getElementById("marketRanges");
       const observations = document.getElementById("researchObservations");
       const sources = document.getElementById("sourceLinks");
+      const suggestionBox = document.getElementById("priceSuggestion");
+      const suggestion = research.suggestion;
       panel.classList.toggle("unavailable", research.status !== "ready");
       confidence.textContent = research.status === "ready" ? `可信度 ${research.confidence}` : research.status === "needs_item" ? "需要准确商品名" : "公开证据不足";
       document.getElementById("researchSummary").textContent = research.summary || "没有找到可核验的公开价格。";
+      suggestionBox.classList.toggle("unavailable", !suggestion);
+      document.getElementById("suggestionLabel").textContent = suggestion ? `建议回价参考（${suggestion.platform}样本）` : "建议回价参考";
+      document.getElementById("suggestionRange").textContent = suggestion ? `${money(suggestion.low)} - ${money(suggestion.high)}` : "样本不足，暂不建议价格";
+      document.getElementById("suggestionDetail").textContent = suggestion
+        ? `${suggestion.basis}。这是同款公开挂牌参考，不是平台成交价。`
+        : `目前只有${(research.comparables || []).length}条可核验同款样本，至少需要3条才计算建议价格。`;
+      const stats = document.getElementById("suggestionStats");
+      stats.replaceChildren();
+      if (suggestion) {
+        [`样本均价 ${money(suggestion.average)}`,`样本中位价 ${money(suggestion.median)}`,`样本数 ${suggestion.sampleCount}条`].forEach((text) => {
+          const item = document.createElement("span"); item.textContent = text; stats.appendChild(item);
+        });
+      }
+      const sampleList = document.getElementById("comparableSamples");
+      sampleList.replaceChildren();
+      (research.comparables || []).slice(0, 6).forEach((sample) => {
+        const link = document.createElement("a"); link.className = "sample-link"; link.href = sample.url; link.target = "_blank"; link.rel = "noopener noreferrer";
+        const text = document.createElement("span"); text.textContent = sample.title || "同款二手商品";
+        const platform = document.createElement("small"); platform.textContent = `${sample.platform}公开挂牌`;
+        text.appendChild(platform);
+        const price = document.createElement("strong"); price.textContent = money(sample.price);
+        link.append(text,price); sampleList.appendChild(link);
+      });
       ranges.replaceChildren();
       [research.newPrice,research.usedListing,research.confirmedSold].filter(Boolean).forEach((range) => {
         const row = document.createElement("div"); row.className = "market-range";
@@ -703,12 +778,14 @@
       });
       observations.style.display = observations.children.length ? "grid" : "none";
       sources.replaceChildren();
-      (research.sources || []).slice(0, 6).forEach((source) => {
+      const sampleUrls = new Set((research.comparables || []).map((sample) => sample.url));
+      (research.sources || []).filter((source) => !sampleUrls.has(source.url)).slice(0, 6).forEach((source) => {
         const link = document.createElement("a"); link.className = "source-link"; link.href = source.url; link.target = "_blank"; link.rel = "noopener noreferrer";
         const title = document.createElement("span"); title.textContent = source.title || "公开来源";
-        const action = document.createElement("span"); action.textContent = "查看来源";
+        const action = document.createElement("span"); action.textContent = source.platform === "闲鱼" ? "闲鱼来源" : "查看来源";
         link.append(title,action); sources.appendChild(link);
       });
+      sources.style.display = sources.children.length ? "grid" : "none";
       const searchedAt = research.searchedAt ? new Date(research.searchedAt).toLocaleString("zh-CN", { month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit" }) : "";
       const limitation = (research.limitations || [])[0];
       document.getElementById("researchMeta").textContent = [searchedAt ? `查询时间 ${searchedAt}` : "",research.cached ? "使用近期缓存" : "",limitation,"公开挂牌价不等于真实成交价"].filter(Boolean).join("。") + "。";
