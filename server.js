@@ -134,14 +134,14 @@ async function askVisionJSON(system, imageDataUri, note) {
 const BARGAIN_VISION_SYS = `你是二手交易截图的信息提取工具。只提取截图中明确可见的事实，不推测市场价格，不评价买卖双方。
 只输出 JSON：
 {
-  "itemName": "截图中明确出现的商品名，没有则为空字符串",
+  "itemName": "截图中明确出现的真实品牌、商品名或型号，没有则为空字符串",
   "listingPrice": 110,
   "offerPrice": 60,
   "originalPrice": null,
   "visibleFacts": ["最多3条截图中明确可见的事实"],
   "chatSummary": "一句话概括对方如何议价"
 }
-价格只填数字。看不清或没有出现就填 null，绝不能猜。`;
+价格只填数字。卖家昵称、头像名和平台账号不是商品品牌。看不清或没有出现就填 null，绝不能猜。`;
 
 function normalizeBargainExtraction(extracted) {
   return {
@@ -425,7 +425,7 @@ function unavailableResearch(status, summary) {
 }
 
 async function researchMarket(input) {
-  if (!input.itemName) return unavailableResearch("needs_item", "需要准确的商品名或型号，才能联网查找同款价格。");
+  if (!input.itemName) return unavailableResearch("needs_item", "请补充真实品牌、商品名或型号，刀刀才能联网查找同款价格。");
   if (!SEARCH_READY) return unavailableResearch("unavailable", "联网查价暂未配置，本次先按砍价幅度和你提供的信息判断。");
   const cacheKey = [input.itemName,input.category,input.condition,input.originalPrice].map((value) => String(value || "").trim().toLowerCase()).join("|");
   const cached = MARKET_RESEARCH_CACHE.get(cacheKey);

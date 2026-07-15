@@ -68,6 +68,12 @@
     .preview img { display:block; width:100%; max-height:310px; object-fit:contain; border-radius:12px; background:#fff; }
     .remove-image { position:absolute; top:20px; right:20px; width:36px; height:36px; border:1px solid var(--line); border-radius:50%; background:rgba(24,24,22,.82); color:#fff; cursor:pointer; font-size:20px; }
     .privacy { margin:9px 2px 0; color:var(--muted); font-size:12px; line-height:1.55; }
+    .identity-field { margin-top:18px; padding:16px; border:1.5px solid var(--ink); border-radius:16px; background:rgba(255,216,77,.16); }
+    .identity-field label { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 10px; }
+    .identity-required { color:var(--danger); font-size:12px; font-weight:800; }
+    .identity-status { min-height:18px; }
+    .identity-status.warning { color:var(--danger); font-weight:750; }
+    .identity-status.success { color:var(--success); font-weight:750; }
     .input-or { display:flex; align-items:center; gap:12px; margin:18px 0; color:var(--muted); font-size:12px; }
     .input-or::before,.input-or::after { content:""; height:1px; flex:1; background:var(--line); }
     .description-box { padding:17px; border:1.5px solid var(--line); border-radius:16px; background:var(--paper-2); }
@@ -259,10 +265,16 @@
             </div>
             <p class="privacy">请先遮住姓名、电话、地址等隐私。图片只用于本次判断。</p>
 
-            <div class="input-or"><span>或者</span></div>
+            <div class="field identity-field">
+              <label for="itemName">真实品牌 + 商品名/型号 <span class="identity-required">联网查价需要</span></label>
+              <input id="itemName" name="itemName" maxlength="60" autocomplete="off" aria-describedby="itemNameStatus" placeholder="例如：品牌名 + 商品完整名称 + 型号">
+              <p class="helper identity-status" id="itemNameStatus" role="status">截图里看不清时请手动输入。刀刀不会把卖家昵称当品牌，也不会猜品牌。</p>
+            </div>
+
+            <div class="input-or"><span>没有截图也可以直接说</span></div>
             <div class="description-box">
               <div class="description-head">
-                <div class="description-title"><strong>直接描述这次砍价</strong><span>像聊天一样说清楚就行</span></div>
+                <div class="description-title"><strong>直接描述这次砍价</strong><span>请说出真实品牌、商品名和价格</span></div>
                 <button class="voice-button" id="voiceButton" type="button" aria-pressed="false">开始语音</button>
               </div>
               <label class="field-label" for="description">文字描述</label>
@@ -284,10 +296,6 @@
             <details>
               <summary>补充信息，让判断更靠谱</summary>
               <div class="detail-grid">
-                <div class="field wide">
-                  <label for="itemName">商品名称</label>
-                  <input id="itemName" name="itemName" maxlength="60" placeholder="例如：某品牌骑行裤">
-                </div>
                 <div class="field">
                   <label for="originalPrice">商品原价</label>
                   <div class="money"><input id="originalPrice" name="originalPrice" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="400"></div>
@@ -413,6 +421,8 @@
     const uploadEmpty = document.getElementById("uploadEmpty");
     const removeImage = document.getElementById("removeImage");
     const descriptionInput = document.getElementById("description");
+    const itemNameInput = document.getElementById("itemName");
+    const itemNameStatus = document.getElementById("itemNameStatus");
     const voiceButton = document.getElementById("voiceButton");
     const voiceStatus = document.getElementById("voiceStatus");
     const submitButton = document.getElementById("submitButton");
@@ -443,6 +453,24 @@
       status.classList.toggle("success", type === "success");
     }
 
+    function setItemNameStatus(message, type = "default") {
+      itemNameStatus.textContent = message;
+      itemNameStatus.classList.toggle("warning", type === "warning");
+      itemNameStatus.classList.toggle("success", type === "success");
+    }
+
+    itemNameInput.addEventListener("input", () => {
+      const name = itemNameInput.value.trim();
+      setItemNameStatus(name
+        ? `已填写“${name}”，请确认品牌和型号准确。`
+        : "请填写真实品牌和商品名。刀刀不会把卖家昵称当品牌，也不会猜品牌。", name ? "success" : "warning");
+      if (name && status.textContent.includes("还需要填写真实品牌和商品名")) {
+        setFormStatus("商品信息已补充，请确认识别出的价格。", "success");
+      } else if (!name && imageData) {
+        setFormStatus("还需要填写真实品牌和商品名，刀刀才能联网查同款价格。");
+      }
+    });
+
     function updateSubmitState() {
       submitButton.disabled = isListening || isExtractingImage;
       submitButton.textContent = isExtractingImage ? "正在识别截图" : isListening ? "请先说完" : "帮我看看这刀";
@@ -457,6 +485,10 @@
       previewImage.removeAttribute("src");
       previewWrap.style.display = "none";
       uploadEmpty.style.display = "block";
+      const name = itemNameInput.value.trim();
+      setItemNameStatus(name
+        ? `已填写“${name}”，请确认品牌和型号准确。`
+        : "截图里看不清时请手动输入。刀刀不会把卖家昵称当品牌，也不会猜品牌。", name ? "success" : "default");
       setFormStatus("");
       updateSubmitState();
     }
@@ -482,14 +514,33 @@
         fillRecognizedField("listingPrice", data.listingPrice);
         fillRecognizedField("offerPrice", data.offerPrice);
         fillRecognizedField("originalPrice", data.originalPrice);
-        const found = [
+        const priceFacts = [
           data.listingPrice != null ? `挂牌价 ¥${data.listingPrice}` : "",
           data.offerPrice != null ? `对方报价 ¥${data.offerPrice}` : "",
           data.originalPrice != null ? `商品原价 ¥${data.originalPrice}` : "",
         ].filter(Boolean);
-        setFormStatus(found.length ? `已识别：${found.join("，")}。你可以直接修改。` : "截图已上传，但没有识别出明确价格，请手动填写。", found.length ? "success" : "error");
+        const recognizedName = itemNameInput.value.trim();
+        if (data.itemName) {
+          setItemNameStatus(`已从截图识别为“${recognizedName}”，请确认是否准确。`, "success");
+        } else if (recognizedName) {
+          setItemNameStatus(`已填写“${recognizedName}”，截图中没有识别出商品名，请确认是否准确。`, "success");
+        } else {
+          setItemNameStatus("截图没有识别出真实品牌和商品名，请手动填写后再查价。", "warning");
+        }
+        if (priceFacts.length && recognizedName) {
+          setFormStatus(`已识别：商品 ${recognizedName}，${priceFacts.join("，")}。你可以直接修改。`, "success");
+        } else if (priceFacts.length) {
+          setFormStatus(`已识别：${priceFacts.join("，")}。还需要填写真实品牌和商品名。`);
+        } else if (recognizedName) {
+          setFormStatus(`已识别商品 ${recognizedName}，但没有识别出明确价格，请手动填写。`);
+        } else {
+          setFormStatus("截图已上传，但没有识别出明确商品和价格，请手动填写。");
+        }
       } catch (error) {
-        if (token === imageRecognitionToken) setFormStatus(error.message || "截图暂时没有识别成功，可以手动填写后继续。");
+        if (token === imageRecognitionToken) {
+          setItemNameStatus("截图暂时没有识别成功，请手动填写真实品牌和商品名。", "warning");
+          setFormStatus(error.message || "截图暂时没有识别成功，可以手动填写后继续。");
+        }
       } finally {
         if (token === imageRecognitionToken) {
           isExtractingImage = false;
