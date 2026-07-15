@@ -521,7 +521,7 @@ async function researchMarket(input) {
   if (cached && Date.now() - cached.searchedAt < 6 * 60 * 60 * 1000) return { ...cached,cached:true };
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 18000);
+  const timeout = setTimeout(() => controller.abort(), 26000);
   try {
     const prompt = marketResearchPrompt(input);
     const isGoogle = SEARCH_PROVIDER === "google";
@@ -530,7 +530,7 @@ async function researchMarket(input) {
       body:JSON.stringify({ model:SEARCH_MODEL,input:prompt,tools:[{ type:"google_search" }] }),signal:controller.signal,
     } : {
       method:"POST",headers:{ "Authorization":`Bearer ${OPENROUTER_SEARCH_KEY}`,"Content-Type":"application/json","Accept-Encoding":"identity" },
-      body:JSON.stringify({ model:OPENROUTER_SEARCH_MODEL,messages:[{ role:"user",content:prompt }],plugins:[{ id:"web",engine:"exa",max_results:10 }],temperature:0.1,max_tokens:1800 }),signal:controller.signal,
+      body:JSON.stringify({ model:OPENROUTER_SEARCH_MODEL,messages:[{ role:"user",content:prompt }],plugins:[{ id:"web",max_results:8 }],temperature:0.1,max_tokens:1600 }),signal:controller.signal,
     });
     if (!response.ok) {
       const body = await response.text();
