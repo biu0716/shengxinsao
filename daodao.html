@@ -236,6 +236,199 @@
       *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
     }
   </style>
+  <style id="ticket-theme">
+    :root {
+      color-scheme:light;
+      --bg:#d9d6ce;
+      --paper:#f8f6ef;
+      --paper-2:#ece9df;
+      --ink:#171715;
+      --muted:#6a6861;
+      --line:#171715;
+      --soft-line:#c9c5ba;
+      --accent:#ffcd2e;
+      --accent-strong:#efb900;
+      --danger:#cf2118;
+      --success:#116c43;
+      --shadow:none;
+      --radius:0;
+      font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    }
+    html { background:var(--bg); }
+    body { background:var(--bg); }
+    .shell { width:min(1120px,100%); padding:0 24px 40px; }
+    .topbar { min-height:64px; border-bottom:1px solid rgba(23,23,21,.24); }
+    .brand { gap:8px; font-size:19px; letter-spacing:-.02em; }
+    .brand-mark { width:28px; height:28px; border:1px solid var(--ink); border-radius:0; box-shadow:none; background:var(--accent); }
+    .brand-mark::after { width:17px; height:2px; border-radius:0; }
+    .legacy-link { color:var(--ink); font-size:12px; text-decoration:none; border-bottom:1px solid currentColor; }
+    .layout { grid-template-columns:280px minmax(0,620px); justify-content:center; gap:56px; padding-top:42px; }
+    .hero { top:28px; padding:0; }
+    .eyebrow { margin:0 0 14px; color:var(--ink); font-size:12px; font-weight:800; letter-spacing:.04em; }
+    h1 { max-width:270px; font-size:34px; line-height:1.15; letter-spacing:-.045em; }
+    .headline-line { display:inline; white-space:normal; }
+    .headline-line + .headline-line::before { content:""; }
+    .slash { color:var(--ink); }
+    .lead { margin:18px 0 0; font-size:15px; line-height:1.75; font-weight:500; }
+    .modes { display:block; margin-top:30px; border-top:1px solid var(--ink); }
+    .mode { width:100%; min-height:72px; padding:15px 0; border:0; border-bottom:1px solid var(--soft-line); border-radius:0; background:transparent; box-shadow:none; }
+    .mode strong { margin-bottom:5px; font-size:17px; }
+    .mode span { font-size:12px; }
+    .mode.active { padding-left:14px; border-color:var(--ink); border-left:7px solid var(--accent); background:transparent; box-shadow:none; }
+    .mode.soon { padding-left:14px; }
+    .trust { gap:0; margin-top:24px; border-top:1px solid var(--soft-line); font-size:12px; }
+    .trust li { gap:0; padding:11px 0; border-bottom:1px solid var(--soft-line); line-height:1.55; }
+    .trust li::before { content:""; }
+    .card { border:1px solid var(--ink); border-radius:2px; background:var(--paper); box-shadow:none; }
+    .form-head { position:relative; padding:20px 22px 18px; border-bottom:1px solid var(--ink); }
+    .form-head::after { content:"SELLER"; position:absolute; top:22px; right:22px; font:700 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.08em; }
+    .step { margin-bottom:14px; color:var(--ink); font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.04em; }
+    h2 { max-width:450px; font-size:28px; letter-spacing:-.045em; }
+    .sub { margin-top:7px; max-width:470px; font-size:13px; line-height:1.55; }
+    .form-body { padding:0 22px 24px; }
+    .uploader { min-height:168px; margin-top:22px; justify-content:flex-start; border:1px solid var(--ink); border-radius:0; background:transparent; overflow:hidden; }
+    .uploader::before { content:"01"; align-self:stretch; width:58px; flex:0 0 58px; display:grid; place-items:center; background:var(--accent); border-right:1px solid var(--ink); font:850 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .upload-empty { padding:24px 20px; text-align:left; }
+    .upload-empty .upload-symbol { display:none; }
+    .upload-empty strong { font-size:18px; }
+    .upload-empty strong::after { content:"  ↗"; }
+    .upload-empty span { margin-top:8px; font:500 11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.02em; }
+    .preview { padding:10px; }
+    .preview img { max-height:300px; border-radius:0; background:var(--paper); }
+    .remove-image { top:18px; right:18px; width:32px; height:32px; border-radius:0; background:var(--ink); color:var(--paper); }
+    .privacy { margin:8px 0 0 59px; font-size:11px; }
+    .identity-field { position:relative; margin-top:18px; padding:18px 18px 18px 76px; border:1px solid var(--ink); border-radius:0; background:transparent; }
+    .identity-field::before { content:"02"; position:absolute; inset:0 auto 0 0; width:58px; display:grid; place-items:center; border-right:1px solid var(--ink); font:850 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .identity-field label { font-size:14px; }
+    .identity-required { color:var(--danger); }
+    .input-or { margin:18px 0; }
+    .input-or::before,.input-or::after { background:var(--soft-line); }
+    .description-box { position:relative; padding:18px 18px 18px 76px; border:1px solid var(--ink); border-radius:0; background:transparent; }
+    .description-box::before { content:"03"; position:absolute; inset:0 auto 0 0; width:58px; display:grid; place-items:center; border-right:1px solid var(--ink); font:850 20px/1 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .description-head { margin-bottom:12px; }
+    .description-title strong { font-size:15px; }
+    .voice-button { min-height:36px; padding:0 12px; border:1px solid var(--ink); border-radius:0; background:transparent; font-size:12px; }
+    .voice-button:hover { background:var(--accent); }
+    .voice-button.listening { background:var(--danger); color:var(--paper); }
+    .price-grid { gap:0; margin-top:18px; border:1px solid var(--ink); }
+    .price-grid .field { padding:14px; }
+    .price-grid .field + .field { border-left:1px solid var(--ink); }
+    .decision-block { margin-top:18px; padding:0; border:1px solid var(--ink); border-radius:0; background:transparent; }
+    .decision-head { margin:0; padding:12px 14px; background:var(--ink); color:var(--paper); }
+    .decision-head h3 { font-size:14px; }
+    .decision-head p { color:#c7c4bb; }
+    .context-grid { gap:0; }
+    .context-grid .field { padding:14px; border-bottom:1px solid var(--soft-line); }
+    .context-grid .field:nth-child(2) { border-left:1px solid var(--soft-line); }
+    .context-grid .wide { border-bottom:0; }
+    .field { gap:7px; }
+    .field label,.field-label { font-size:13px; }
+    input,select,textarea { border:1px solid var(--soft-line); border-radius:0; background:#fbfaf5; transition:border-color .18s,box-shadow .18s; }
+    input,select { height:48px; }
+    textarea { min-height:88px; }
+    input:focus,select:focus,textarea:focus { border-color:var(--ink); box-shadow:0 0 0 2px var(--accent); }
+    details { border-top:1px solid var(--ink); }
+    summary { padding:18px 0 8px; }
+    .actions { grid-template-columns:1fr auto; margin-top:22px; }
+    .primary,.secondary,.copy-btn,.again { border:1px solid var(--ink); border-radius:0; box-shadow:none; white-space:nowrap; }
+    .primary { background:var(--ink); color:var(--paper); font-size:16px; }
+    .primary:hover { background:#30302d; }
+    .primary:active { transform:translateY(1px); box-shadow:none; }
+    .secondary { background:transparent; border-color:var(--ink); }
+    .status { margin:12px 0 0; }
+    .loading { padding:56px 30px; }
+    .loading-mark { width:100%; height:12px; margin:0 auto 28px; border:1px solid var(--ink); border-radius:0; background:linear-gradient(90deg,var(--accent) 0 35%,transparent 35%); animation:ticket-load 1.1s steps(4,end) infinite; }
+    @keyframes ticket-load { to { background-position:320px 0; } }
+    .result { background:var(--paper); }
+    .result::before { content:"刀刀 / 判断单"; display:block; padding:20px 22px 18px; border-bottom:1px solid var(--ink); font-size:20px; font-weight:900; letter-spacing:-.02em; }
+    .result-hero { padding:0; background:var(--paper); border-bottom:1px solid var(--ink); color:var(--ink); }
+    .result-top { display:grid; grid-template-columns:112px 1fr; grid-template-rows:1fr; min-height:170px; gap:0; }
+    .result-top > div { display:grid; grid-template-columns:112px 1fr; grid-column:1 / -1; height:100%; align-self:stretch; }
+    .result-label { display:grid; place-items:center; margin:0; padding:10px; border:0; border-right:1px solid var(--ink); border-radius:0; background:var(--danger); color:var(--paper); font-size:21px; white-space:nowrap; text-align:center; }
+    .percent { display:flex; align-items:center; justify-content:center; margin:0; font:850 54px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:-.06em; }
+    .percent small { font-size:20px; }
+    .mode-tag { display:none; }
+    .price-line { margin:0; padding:13px 16px; border-top:1px solid var(--ink); background:var(--ink); color:var(--paper); font-weight:700; }
+    .result-body { padding:0 22px 24px; }
+    .metrics { gap:0; border:1px solid var(--ink); border-top:0; }
+    .metric { min-height:76px; padding:13px; border:0; border-radius:0; }
+    .metric + .metric { border-left:1px solid var(--soft-line); }
+    .metric strong { margin-top:7px; font:800 18px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .verdict { margin-top:18px; padding:16px; border:1px solid var(--ink); border-left:8px solid var(--danger); border-radius:0; background:transparent; }
+    .verdict strong { font-size:18px; }
+    .section { margin-top:22px; }
+    .section h3 { margin-bottom:10px; font-size:16px; }
+    .research-title { border-bottom:1px solid var(--ink); }
+    .research-confidence { font-size:11px; }
+    .research-panel { padding:0; border:1px solid var(--ink); border-radius:0; }
+    .research-summary { padding:14px; border-bottom:1px solid var(--soft-line); }
+    .price-suggestion { margin:0; padding:15px; border:0; border-bottom:1px solid var(--ink); border-radius:0; background:var(--accent); }
+    .price-suggestion.unavailable { background:var(--paper-2); }
+    .suggestion-range { font:850 27px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .sample-list { gap:0; margin-top:13px; border-top:1px solid var(--ink); }
+    .sample-link { min-height:46px; padding:8px 0; border-top:0; border-bottom:1px solid var(--soft-line); }
+    .sample-link:last-child { border-bottom:0; }
+    .market-ranges { margin:0; padding:0 14px; }
+    .market-range { grid-template-columns:118px 1fr; }
+    .research-observations,.source-links,.research-meta { margin-left:14px; margin-right:14px; }
+    .fact-list { gap:0; border:1px solid var(--soft-line); }
+    .fact-list li { padding:12px 14px; border-radius:0; background:transparent; }
+    .fact-list li + li { border-top:1px solid var(--soft-line); }
+    .action-box { border:1px solid var(--ink); border-radius:0; }
+    .scripts { gap:0; border:1px solid var(--ink); }
+    .script { border:0; border-radius:0; padding:14px; }
+    .script + .script { border-top:1px solid var(--soft-line); }
+    .copy-btn { background:var(--ink); color:var(--paper); }
+    .again { background:var(--ink); color:var(--paper); }
+    .toast { border-radius:0; }
+    .footer { padding-top:28px; }
+    @media (max-width:860px) {
+      .layout { grid-template-columns:1fr; gap:28px; padding-top:28px; }
+      .hero { max-width:620px; margin:0 auto; }
+      .hero h1 { max-width:none; }
+      .lead { max-width:620px; }
+      .modes { display:grid; }
+      .trust { display:none; }
+    }
+    @media (max-width:520px) {
+      .shell { padding:0 0 24px; }
+      .topbar { min-height:58px; padding:0 16px; }
+      .layout { padding-top:0; gap:18px; }
+      .hero { padding:22px 16px 0; }
+      .hero h1 { font-size:29px; }
+      .lead { font-size:14px; }
+      .modes { grid-template-columns:1fr 1fr; margin-top:22px; }
+      .mode { padding:13px 10px; }
+      .mode.active,.mode.soon { padding-left:10px; }
+      .card { border-left:0; border-right:0; }
+      .form-head { padding:18px 16px 15px; }
+      .form-head::after { right:16px; }
+      .form-body,.result-body { padding-left:16px; padding-right:16px; }
+      .uploader::before,.identity-field::before,.description-box::before { width:48px; }
+      .uploader::before { flex-basis:48px; }
+      .identity-field,.description-box { padding-left:62px; }
+      .privacy { margin-left:49px; }
+      .description-head { flex-direction:column; }
+      .voice-button { width:100%; }
+      .price-grid { grid-template-columns:1fr 1fr; }
+      .price-grid .field { padding:10px; }
+      .context-grid { grid-template-columns:1fr; }
+      .context-grid .field:nth-child(2) { border-left:0; }
+      .actions { grid-template-columns:1fr; }
+      .result-top { min-height:150px; }
+      .result-label { font-size:20px; }
+      .percent { font-size:44px; }
+      .metrics { grid-template-columns:1fr 1fr; }
+      .metric:last-child { grid-column:1 / -1; border-top:1px solid var(--soft-line); border-left:0; }
+    }
+    @media (prefers-color-scheme:dark) {
+      :root { color-scheme:dark; --bg:#171715; --paper:#22221e; --paper-2:#2d2d28; --ink:#f1efe7; --muted:#aaa79e; --line:#f1efe7; --soft-line:#4b4a43; --accent:#e6b91d; --accent-strong:#c99a00; --danger:#e14b3e; --success:#63c894; }
+      input,select,textarea { background:#292924; }
+      .primary,.copy-btn,.again,.decision-head,.price-line { background:var(--ink); color:#171715; }
+      .result-label { color:#f8f6ef; }
+      .loading-mark { border-color:var(--ink); }
+    }
+  </style>
 </head>
 <body>
   <div class="shell">
@@ -246,9 +439,9 @@
 
     <main class="layout">
       <section class="hero" aria-labelledby="hero-title">
-        <p class="eyebrow">二手交易砍价参谋</p>
-        <h1 id="hero-title"><span class="headline-line">拍张图，</span><span class="headline-line">看这刀<span class="slash">该不该接。</span></span></h1>
-        <p class="lead">上传商品或聊天截图，也可以直接说。刀刀帮你查价格、算砍价幅度，再生成能直接回复对方的话术。</p>
+        <p class="eyebrow">刀刀 / 议价单</p>
+        <h1 id="hero-title">判断一笔砍价</h1>
+        <p class="lead">把商品和报价填清楚。刀刀会核对砍价幅度、公开挂牌样本，给出回价区间和可复制回复。</p>
         <div class="modes" aria-label="使用身份">
           <div class="mode active"><strong>我被刀了</strong><span>卖家看报价，决定接不接</span></div>
           <button class="mode soon" id="buyerSoon" type="button"><strong>我想出刀</strong><span>买家版即将上线</span></button>
@@ -263,9 +456,9 @@
       <section class="card" id="analyzer" aria-label="砍价分析工具">
         <form id="bargainForm">
           <div class="form-head">
-            <p class="step">卖家侧测试版</p>
-            <h2>这刀该不该接？</h2>
-            <p class="sub">上传截图、打字或语音描述，选一种就能开始。</p>
+            <p class="step">新建议价单</p>
+            <h2>新建一笔议价判断</h2>
+            <p class="sub">上传截图、打字或语音，选一种即可。识别出的内容可以修改。</p>
           </div>
           <div class="form-body">
             <div class="uploader" id="dropZone">
@@ -384,8 +577,8 @@
             </details>
 
             <div class="actions">
-              <button class="primary" id="submitButton" type="submit">帮我看看这刀</button>
-              <button class="secondary" id="demoButton" type="button">试试骑行裤示例</button>
+              <button class="primary" id="submitButton" type="submit">生成议价单</button>
+              <button class="secondary" id="demoButton" type="button">填入示例</button>
             </div>
             <p class="status" id="formStatus" role="alert"></p>
           </div>
@@ -393,8 +586,8 @@
 
         <div class="loading" id="loading" aria-live="polite">
           <div class="loading-mark" aria-hidden="true"></div>
-          <h2>正在量这把刀</h2>
-          <p>正在联网查同款公开价格，并核对证据来源。</p>
+          <h2>正在核对价格</h2>
+          <p>正在读取截图和公开挂牌样本。</p>
         </div>
 
         <article class="result" id="result" aria-live="polite">
@@ -414,7 +607,7 @@
             <div class="verdict"><strong id="verdict"></strong><p id="boundary"></p></div>
 
             <section class="section" id="researchSection">
-              <div class="research-title"><h3>刀刀联网查到</h3><span class="research-confidence" id="researchConfidence"></span></div>
+              <div class="research-title"><h3>公开挂牌样本</h3><span class="research-confidence" id="researchConfidence"></span></div>
               <div class="research-panel" id="researchPanel">
                 <p class="research-summary" id="researchSummary"></p>
                 <div class="price-suggestion unavailable" id="priceSuggestion">
@@ -440,11 +633,11 @@
               <ul class="fact-list" id="missing"></ul>
             </section>
             <section class="section">
-              <h3>建议怎么做</h3>
+              <h3>处理建议</h3>
               <div class="action-box" id="actionText"></div>
             </section>
             <section class="section">
-              <h3>选一句直接发</h3>
+              <h3>可直接发送</h3>
               <div class="scripts">
                 <div class="script"><div class="script-head"><strong>客气回价</strong><button class="copy-btn" type="button" data-copy="polite">复制</button></div><p id="scriptPolite"></p></div>
                 <div class="script"><div class="script-head"><strong>明确底线</strong><button class="copy-btn" type="button" data-copy="firm">复制</button></div><p id="scriptFirm"></p></div>
@@ -521,7 +714,7 @@
 
     function updateSubmitState() {
       submitButton.disabled = isListening || isExtractingImage;
-      submitButton.textContent = isExtractingImage ? "正在识别截图" : isListening ? "请先说完" : "帮我看看这刀";
+      submitButton.textContent = isExtractingImage ? "正在识别截图" : isListening ? "请先说完" : "生成议价单";
     }
 
     function resetImage() {
@@ -737,7 +930,7 @@
       const suggestionBox = document.getElementById("priceSuggestion");
       const suggestion = research.suggestion;
       panel.classList.toggle("unavailable", research.status !== "ready");
-      confidence.textContent = research.status === "ready" ? `可信度 ${research.confidence}` : research.status === "needs_item" ? "需要准确商品名" : "公开证据不足";
+      confidence.textContent = research.status === "ready" ? "已核验公开来源" : research.status === "needs_item" ? "需要准确商品名" : "公开样本不足";
       document.getElementById("researchSummary").textContent = research.summary || "没有找到可核验的公开价格。";
       suggestionBox.classList.toggle("unavailable", !suggestion);
       document.getElementById("suggestionLabel").textContent = suggestion ? `建议回价参考（${suggestion.platform}样本）` : "建议回价参考";
