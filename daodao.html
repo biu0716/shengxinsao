@@ -38,7 +38,8 @@
     .layout { display:grid; grid-template-columns:minmax(0,.86fr) minmax(440px,1.14fr); gap:70px; align-items:start; padding-top:48px; }
     .hero { position:sticky; top:40px; padding-top:12px; }
     .eyebrow { margin:0 0 18px; font-size:14px; font-weight:800; letter-spacing:.12em; color:var(--muted); }
-    h1 { max-width:650px; margin:0; font-size:clamp(48px,6vw,84px); line-height:.98; letter-spacing:-.075em; }
+    h1 { max-width:650px; margin:0; font-size:clamp(48px,4.6vw,56px); line-height:1.02; letter-spacing:-.07em; }
+    .headline-line { display:block; white-space:nowrap; }
     .slash { color:var(--danger); }
     .lead { max-width:510px; margin:24px 0 0; font-size:21px; line-height:1.65; font-weight:650; }
     .modes { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:36px; }
@@ -166,7 +167,7 @@
       .shell { padding:0 18px 36px; }
       .layout { grid-template-columns:1fr; gap:30px; padding-top:20px; }
       .hero { position:static; padding-top:8px; }
-      h1 { font-size:clamp(48px,14vw,72px); max-width:600px; }
+      h1 { font-size:clamp(48px,10vw,68px); max-width:600px; }
       .lead { margin-top:18px; font-size:18px; }
       .trust { display:none; }
       .modes { margin-top:26px; }
@@ -177,7 +178,7 @@
       .topbar { min-height:64px; }
       .legacy-link { font-size:12px; }
       .layout { padding-top:12px; gap:24px; }
-      h1 { font-size:50px; }
+      h1 { font-size:clamp(34px,12vw,50px); }
       .lead { font-size:17px; }
       .modes { gap:9px; }
       .mode { min-height:88px; padding:14px; }
@@ -222,8 +223,8 @@
     <main class="layout">
       <section class="hero" aria-labelledby="hero-title">
         <p class="eyebrow">二手交易砍价参谋</p>
-        <h1 id="hero-title">一拍就知道，<br>这刀<span class="slash">离不离谱。</span></h1>
-        <p class="lead">上传截图，或者直接说给刀刀听。看清对方刀了多少、该不该接，再拿一段能直接发出去的回复。</p>
+        <h1 id="hero-title"><span class="headline-line">拍张图，</span><span class="headline-line">看这刀<span class="slash">该不该接。</span></span></h1>
+        <p class="lead">上传商品或聊天截图，也可以直接说。刀刀帮你查价格、算砍价幅度，再生成能直接回复对方的话术。</p>
         <div class="modes" aria-label="使用身份">
           <div class="mode active"><strong>我被刀了</strong><span>卖家看报价，决定接不接</span></div>
           <button class="mode soon" id="buyerSoon" type="button"><strong>我想出刀</strong><span>买家版即将上线</span></button>
