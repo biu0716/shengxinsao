@@ -107,6 +107,7 @@
     .primary:disabled { opacity:.55; cursor:wait; }
     .secondary { padding:0 16px; background:transparent; border-color:var(--line); }
     .status { min-height:22px; margin:16px 2px 0; color:var(--danger); font-size:13px; line-height:1.5; }
+    .status.success { color:var(--success); }
     .loading { display:none; padding:50px 30px; }
     .loading-mark { width:56px; height:56px; margin:0 auto 24px; border:6px solid var(--paper-2); border-top-color:var(--ink); border-radius:50%; animation:spin .8s linear infinite; }
     .loading h2,.loading p { text-align:center; }
@@ -358,8 +359,8 @@
           <div class="result-body">
             <div class="metrics">
               <div class="metric"><span>一共刀掉</span><strong id="cutAmount"></strong></div>
-              <div class="metric"><span>挂牌价是原价</span><strong id="originalRatio"></strong></div>
-              <div class="metric"><span>你给的参考价</span><strong id="comparison"></strong></div>
+              <div class="metric"><span>我的挂牌价</span><strong id="listingMetric"></strong></div>
+              <div class="metric"><span>商品原价</span><strong id="originalPriceMetric"></strong></div>
             </div>
             <div class="verdict"><strong id="verdict"></strong><p id="boundary"></p></div>
 
@@ -420,9 +421,12 @@
     const status = document.getElementById("formStatus");
     const toast = document.getElementById("toast");
     let imageData = "";
+    let imageExtraction = null;
     let latestScripts = {};
     let recognition = null;
     let isListening = false;
+    let isExtractingImage = false;
+    let imageRecognitionToken = 0;
     let voiceBaseText = "";
     let voiceHadError = false;
     const apiBase = window.location.protocol === "file:" ? "https://shengxinsao.onrender.com" : "";
@@ -434,12 +438,64 @@
       showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
     }
 
+    function setFormStatus(message, type = "error") {
+      status.textContent = message;
+      status.classList.toggle("success", type === "success");
+    }
+
+    function updateSubmitState() {
+      submitButton.disabled = isListening || isExtractingImage;
+      submitButton.textContent = isExtractingImage ? "正在识别截图" : isListening ? "请先说完" : "帮我看看这刀";
+    }
+
     function resetImage() {
+      imageRecognitionToken += 1;
+      isExtractingImage = false;
       imageData = "";
+      imageExtraction = null;
       fileInput.value = "";
       previewImage.removeAttribute("src");
       previewWrap.style.display = "none";
       uploadEmpty.style.display = "block";
+      setFormStatus("");
+      updateSubmitState();
+    }
+
+    function fillRecognizedField(id, value) {
+      const input = document.getElementById(id);
+      if ((input.value === "" || input.value === null) && value !== null && value !== undefined && value !== "") input.value = value;
+    }
+
+    async function recognizeScreenshot(dataUri, token) {
+      isExtractingImage = true;
+      updateSubmitState();
+      setFormStatus("正在识别截图里的商品和价格...");
+      try {
+        const response = await fetch(`${apiBase}/api/bargain/extract`, {
+          method:"POST",headers:{ "Content-Type":"application/json" },body:JSON.stringify({ image:dataUri }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "截图暂时没有识别成功");
+        if (token !== imageRecognitionToken) return;
+        imageExtraction = data;
+        fillRecognizedField("itemName", data.itemName);
+        fillRecognizedField("listingPrice", data.listingPrice);
+        fillRecognizedField("offerPrice", data.offerPrice);
+        fillRecognizedField("originalPrice", data.originalPrice);
+        const found = [
+          data.listingPrice != null ? `挂牌价 ¥${data.listingPrice}` : "",
+          data.offerPrice != null ? `对方报价 ¥${data.offerPrice}` : "",
+          data.originalPrice != null ? `商品原价 ¥${data.originalPrice}` : "",
+        ].filter(Boolean);
+        setFormStatus(found.length ? `已识别：${found.join("，")}。你可以直接修改。` : "截图已上传，但没有识别出明确价格，请手动填写。", found.length ? "success" : "error");
+      } catch (error) {
+        if (token === imageRecognitionToken) setFormStatus(error.message || "截图暂时没有识别成功，可以手动填写后继续。");
+      } finally {
+        if (token === imageRecognitionToken) {
+          isExtractingImage = false;
+          updateSubmitState();
+        }
+      }
     }
 
     function compressImage(file) {
@@ -467,18 +523,23 @@
     fileInput.addEventListener("change", async () => {
       const file = fileInput.files[0];
       if (!file) return;
-      if (!file.type.startsWith("image/")) { status.textContent = "请选择图片文件。"; return resetImage(); }
-      if (file.size > 10 * 1024 * 1024) { status.textContent = "图片超过10MB，请换一张更小的。"; return resetImage(); }
+      if (!file.type.startsWith("image/")) { resetImage(); setFormStatus("请选择图片文件。"); return; }
+      if (file.size > 10 * 1024 * 1024) { resetImage(); setFormStatus("图片超过10MB，请换一张更小的。"); return; }
+      const token = ++imageRecognitionToken;
       try {
-        status.textContent = "正在处理图片...";
+        isExtractingImage = true;
+        imageExtraction = null;
+        updateSubmitState();
+        setFormStatus("正在处理图片...");
         imageData = await compressImage(file);
+        if (token !== imageRecognitionToken) return;
         previewImage.src = imageData;
         previewWrap.style.display = "block";
         uploadEmpty.style.display = "none";
-        status.textContent = "";
+        await recognizeScreenshot(imageData, token);
       } catch (error) {
-        status.textContent = error.message;
         resetImage();
+        setFormStatus(error.message);
       }
     });
 
@@ -498,8 +559,7 @@
         voiceButton.textContent = "停止语音";
         voiceButton.classList.add("listening");
         voiceButton.setAttribute("aria-pressed", "true");
-        submitButton.disabled = true;
-        submitButton.textContent = "请先说完";
+        updateSubmitState();
         voiceStatus.textContent = "正在听，请说出商品、挂牌价和对方报价。";
       };
       recognition.onresult = (event) => {
@@ -521,8 +581,7 @@
         voiceButton.textContent = "开始语音";
         voiceButton.classList.remove("listening");
         voiceButton.setAttribute("aria-pressed", "false");
-        submitButton.disabled = false;
-        submitButton.textContent = "帮我看看这刀";
+        updateSubmitState();
         if (descriptionInput.value.trim() && !voiceHadError) {
           voiceStatus.textContent = "已经转成文字，你可以修改后再判断。";
         }
@@ -610,8 +669,8 @@
       document.getElementById("analysisMode").textContent = data.analysisMode;
       document.getElementById("priceLine").textContent = `对方想从 ${money(data.listingPrice)} 刀到 ${money(data.offerPrice)}`;
       document.getElementById("cutAmount").textContent = money(data.cutAmount);
-      document.getElementById("originalRatio").textContent = data.listingToOriginalPercent === null ? "未填写" : `${data.listingToOriginalPercent}%`;
-      document.getElementById("comparison").textContent = data.comparison ? `${money(data.comparison.min)} 到 ${money(data.comparison.max)}` : "未提供";
+      document.getElementById("listingMetric").textContent = money(data.listingPrice);
+      document.getElementById("originalPriceMetric").textContent = data.originalPrice === null ? "截图未显示" : money(data.originalPrice);
       document.getElementById("verdict").textContent = data.verdict;
       document.getElementById("boundary").textContent = data.boundary;
       renderResearch(data.research);
@@ -631,11 +690,12 @@
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      status.textContent = "";
+      setFormStatus("");
       if (!form.reportValidity()) return;
       const fields = Object.fromEntries(new FormData(form).entries());
       delete fields.screenshot;
       if (imageData) fields.image = imageData;
+      if (imageData && imageExtraction) fields.imageExtraction = imageExtraction;
       form.style.display = "none";
       result.style.display = "none";
       loading.style.display = "block";
@@ -647,9 +707,9 @@
       } catch (error) {
         loading.style.display = "none";
         form.style.display = "block";
-        status.textContent = error instanceof TypeError
+        setFormStatus(error instanceof TypeError
           ? "暂时无法连接分析服务，请检查网络后再试。"
-          : error.message;
+          : error.message);
       }
     });
 
@@ -671,7 +731,7 @@
     document.getElementById("againButton").addEventListener("click", () => {
       result.style.display = "none";
       form.style.display = "block";
-      status.textContent = "";
+      setFormStatus("");
       document.getElementById("analyzer").scrollIntoView({ behavior:"smooth", block:"start" });
     });
   </script>
