@@ -443,8 +443,8 @@
         <h1 id="hero-title">判断一笔砍价</h1>
         <p class="lead">把商品和报价填清楚。刀刀会核对砍价幅度、公开挂牌样本，给出回价区间和可复制回复。</p>
         <div class="modes" aria-label="使用身份">
-          <div class="mode active"><strong>我被刀了</strong><span>卖家看报价，决定接不接</span></div>
-          <button class="mode soon" id="buyerSoon" type="button"><strong>我想出刀</strong><span>买家版即将上线</span></button>
+          <button class="mode active" id="sellerMode" type="button"><strong>我被刀了</strong><span>卖家看报价，决定接不接</span></button>
+          <button class="mode" id="buyerMode" type="button"><strong>我想出刀</strong><span>买家看报价，决定怎么出</span></button>
         </div>
         <ul class="trust">
           <li>只根据你提供的信息判断，不编造平台行情</li>
@@ -456,9 +456,10 @@
       <section class="card" id="analyzer" aria-label="砍价分析工具">
         <form id="bargainForm">
           <div class="form-head">
-            <p class="step">新建议价单</p>
-            <h2>新建一笔议价判断</h2>
-            <p class="sub">上传截图、打字或语音，选一种即可。识别出的内容可以修改。</p>
+            <p class="step" id="formStep">新建议价单</p>
+            <h2 id="formTitle">新建一笔议价判断</h2>
+            <p class="sub" id="formSub">上传截图、打字或语音，选一种即可。识别出的内容可以修改。</p>
+            <input type="hidden" id="role" name="role" value="seller">
           </div>
           <div class="form-body">
             <div class="uploader" id="dropZone">
@@ -494,11 +495,11 @@
 
             <div class="price-grid">
               <div class="field">
-                <label for="listingPrice">我的挂牌价 <span class="helper">截图或描述可识别</span></label>
+                <label for="listingPrice"><span id="listingPriceLabel">我的挂牌价</span> <span class="helper">截图或描述可识别</span></label>
                 <div class="money"><input id="listingPrice" name="listingPrice" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="110"></div>
               </div>
               <div class="field">
-                <label for="offerPrice">对方报价 <span class="helper">截图或描述可识别</span></label>
+                <label for="offerPrice"><span id="offerPriceLabel">对方报价</span> <span class="helper">截图或描述可识别</span></label>
                 <div class="money"><input id="offerPrice" name="offerPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="60"></div>
               </div>
             </div>
@@ -545,7 +546,7 @@
                   <div class="money"><input id="originalPrice" name="originalPrice" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="400"></div>
                 </div>
                 <div class="field">
-                  <label for="floorPrice">我的心理底价</label>
+                  <label for="floorPrice"><span id="floorPriceLabel">我的心理底价</span></label>
                   <div class="money"><input id="floorPrice" name="floorPrice" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="95"></div>
                 </div>
                 <div class="field">
@@ -667,10 +668,25 @@
     const voiceButton = document.getElementById("voiceButton");
     const voiceStatus = document.getElementById("voiceStatus");
     const submitButton = document.getElementById("submitButton");
+    const demoButton = document.getElementById("demoButton");
     const loading = document.getElementById("loading");
     const result = document.getElementById("result");
     const status = document.getElementById("formStatus");
     const toast = document.getElementById("toast");
+    const roleInput = document.getElementById("role");
+    const sellerModeButton = document.getElementById("sellerMode");
+    const buyerModeButton = document.getElementById("buyerMode");
+    const listingPriceLabel = document.getElementById("listingPriceLabel");
+    const offerPriceLabel = document.getElementById("offerPriceLabel");
+    const floorPriceLabel = document.getElementById("floorPriceLabel");
+    const formStep = document.getElementById("formStep");
+    const formTitle = document.getElementById("formTitle");
+    const formSub = document.getElementById("formSub");
+    const descriptionPlaceholder = document.getElementById("description");
+    const listingPriceInput = document.getElementById("listingPrice");
+    const offerPriceInput = document.getElementById("offerPrice");
+    const floorPriceInput = document.getElementById("floorPrice");
+    const negotiationPreferenceInput = document.getElementById("negotiationPreference");
     let imageData = "";
     let imageExtraction = null;
     let latestScripts = {};
@@ -714,7 +730,46 @@
 
     function updateSubmitState() {
       submitButton.disabled = isListening || isExtractingImage;
-      submitButton.textContent = isExtractingImage ? "正在识别截图" : isListening ? "请先说完" : "生成议价单";
+      submitButton.textContent = isExtractingImage ? "正在识别截图" : isListening ? "请先说完" : (roleInput.value === "buyer" ? "判断这刀能不能出" : "生成议价单");
+    }
+
+    function switchRole(role) {
+      roleInput.value = role;
+      sellerModeButton.classList.toggle("active", role === "seller");
+      buyerModeButton.classList.toggle("active", role === "buyer");
+
+      if (role === "seller") {
+        listingPriceLabel.textContent = "我的挂牌价";
+        offerPriceLabel.textContent = "对方报价";
+        floorPriceLabel.textContent = "我的心理底价";
+        formStep.textContent = "新建议价单";
+        formTitle.textContent = "新建一笔议价判断";
+        formSub.textContent = "上传截图、打字或语音，选一种即可。识别出的内容可以修改。";
+        descriptionInput.placeholder = "例如：骑行裤原价400，穿过几次，挂110，对方只出60，我最低95。";
+        listingPriceInput.placeholder = "110";
+        offerPriceInput.placeholder = "60";
+        floorPriceInput.placeholder = "95";
+        negotiationPreferenceInput.required = true;
+        submitButton.textContent = "生成议价单";
+      } else {
+        listingPriceLabel.textContent = "卖家挂牌价";
+        offerPriceLabel.textContent = "我准备出价";
+        floorPriceLabel.textContent = "我的最高预算";
+        formStep.textContent = "新出价判断";
+        formTitle.textContent = "判断这笔出价";
+        formSub.textContent = "上传截图、打字或语音，选一种即可。识别出的内容可以修改。";
+        descriptionInput.placeholder = "例如：卖家挂一条骑行裤110元，成色轻度使用，我想80元拿下，最高预算95元。";
+        listingPriceInput.placeholder = "110";
+        offerPriceInput.placeholder = "80";
+        floorPriceInput.placeholder = "95";
+        negotiationPreferenceInput.required = false;
+        submitButton.textContent = "判断这刀能不能出";
+      }
+
+      resetImage();
+      form.reset();
+      roleInput.value = role;
+      status.textContent = "";
     }
 
     function resetImage() {
@@ -836,7 +891,8 @@
     });
 
     removeImage.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); resetImage(); });
-    document.getElementById("buyerSoon").addEventListener("click", () => showToast("买家出刀版正在准备，先用卖家版。"));
+    sellerModeButton.addEventListener("click", () => switchRole("seller"));
+    buyerModeButton.addEventListener("click", () => switchRole("buyer"));
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -890,19 +946,33 @@
       voiceStatus.textContent = "当前浏览器不支持语音输入，可以直接打字描述。";
     }
 
-    document.getElementById("demoButton").addEventListener("click", () => {
+    demoButton.addEventListener("click", () => {
       document.querySelector("details").open = true;
-      descriptionInput.value = "我在卖一条骑行裤，原价400元，穿过几次，挂110元，对方只出60元，我最低95元。";
-      document.getElementById("listingPrice").value = "";
-      document.getElementById("offerPrice").value = "";
-      document.getElementById("itemName").value = "";
-      document.getElementById("originalPrice").value = "";
-      document.getElementById("floorPrice").value = "";
-      document.getElementById("category").value = "";
-      document.getElementById("condition").value = "轻度使用";
-      document.getElementById("negotiationPreference").value = "可以小刀";
-      document.getElementById("usageDetails").value = "穿过3次，已清洗，无破损和明显磨损";
-      document.getElementById("note").value = "";
+      if (roleInput.value === "seller") {
+        descriptionInput.value = "我在卖一条骑行裤，原价400元，穿过几次，挂110元，对方只出60元，我最低95元。";
+        document.getElementById("listingPrice").value = "";
+        document.getElementById("offerPrice").value = "";
+        document.getElementById("itemName").value = "";
+        document.getElementById("originalPrice").value = "";
+        document.getElementById("floorPrice").value = "";
+        document.getElementById("category").value = "";
+        document.getElementById("condition").value = "轻度使用";
+        document.getElementById("negotiationPreference").value = "可以小刀";
+        document.getElementById("usageDetails").value = "穿过3次，已清洗，无破损和明显磨损";
+        document.getElementById("note").value = "";
+      } else {
+        descriptionInput.value = "卖家挂一条骑行裤110元，成色轻度使用，我想80元拿下，最高预算95元。";
+        document.getElementById("listingPrice").value = "";
+        document.getElementById("offerPrice").value = "";
+        document.getElementById("itemName").value = "";
+        document.getElementById("originalPrice").value = "";
+        document.getElementById("floorPrice").value = "";
+        document.getElementById("category").value = "";
+        document.getElementById("condition").value = "轻度使用";
+        document.getElementById("negotiationPreference").value = "";
+        document.getElementById("usageDetails").value = "卖家说穿过3次，已清洗，无破损";
+        document.getElementById("note").value = "";
+      }
       form.requestSubmit();
     });
 
@@ -988,10 +1058,43 @@
       document.getElementById("resultLabel").textContent = data.level;
       document.getElementById("cutPercent").textContent = data.cutPercent;
       document.getElementById("analysisMode").textContent = data.analysisMode;
-      document.getElementById("priceLine").textContent = `对方想从 ${money(data.listingPrice)} 刀到 ${money(data.offerPrice)}`;
-      document.getElementById("cutAmount").textContent = money(data.cutAmount);
-      document.getElementById("listingMetric").textContent = money(data.listingPrice);
-      document.getElementById("originalPriceMetric").textContent = data.originalPrice === null ? "截图未显示" : money(data.originalPrice);
+
+      if (data.role === "buyer") {
+        document.getElementById("priceLine").textContent = `卖家挂牌 ${money(data.listingPrice)}，你准备出 ${money(data.offerPrice)}`;
+        document.getElementById("cutAmount").textContent = money(data.cutAmount);
+        document.getElementById("listingMetric").textContent = money(data.listingPrice);
+        document.getElementById("originalPriceMetric").textContent = data.originalPrice === null ? "未填写" : money(data.originalPrice);
+
+        const scriptsContainer = document.querySelector(".scripts");
+        const scriptHeaders = scriptsContainer.querySelectorAll(".script-head strong");
+        const copyButtons = scriptsContainer.querySelectorAll(".copy-btn");
+
+        scriptHeaders[0].textContent = "礼貌询价";
+        scriptHeaders[1].textContent = "说明依据";
+        scriptHeaders[2].textContent = "诚意成交";
+
+        copyButtons[0].dataset.copy = "polite";
+        copyButtons[1].dataset.copy = "firm";
+        copyButtons[2].dataset.copy = "quick";
+      } else {
+        document.getElementById("priceLine").textContent = `对方想从 ${money(data.listingPrice)} 刀到 ${money(data.offerPrice)}`;
+        document.getElementById("cutAmount").textContent = money(data.cutAmount);
+        document.getElementById("listingMetric").textContent = money(data.listingPrice);
+        document.getElementById("originalPriceMetric").textContent = data.originalPrice === null ? "截图未显示" : money(data.originalPrice);
+
+        const scriptsContainer = document.querySelector(".scripts");
+        const scriptHeaders = scriptsContainer.querySelectorAll(".script-head strong");
+        const copyButtons = scriptsContainer.querySelectorAll(".copy-btn");
+
+        scriptHeaders[0].textContent = "客气回价";
+        scriptHeaders[1].textContent = "明确底线";
+        scriptHeaders[2].textContent = "想快点出";
+
+        copyButtons[0].dataset.copy = "polite";
+        copyButtons[1].dataset.copy = "firm";
+        copyButtons[2].dataset.copy = "quick";
+      }
+
       document.getElementById("verdict").textContent = data.verdict;
       document.getElementById("boundary").textContent = data.boundary;
       renderResearch(data.research);

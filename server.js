@@ -372,6 +372,87 @@ function sellerScripts({ itemName, listingPrice, offerPrice, floorPrice, urgency
   };
 }
 
+function buyerScripts({ itemName, listingPrice, offerPrice, suggestion }) {
+  const item = itemName ? `这款${itemName}` : "这款商品";
+  const polite = suggestion && suggestion.low !== null
+    ? `你好，${item}我感兴趣，请问${offerPrice}元可以出吗？`
+    : `你好，${item}我感兴趣，请问${offerPrice}元可以出吗？`;
+  const firm = suggestion && suggestion.low !== null
+    ? `你好，${item}我看同款挂牌在${suggestion.low}-${suggestion.high}元之间，我出${offerPrice}元，能否成交？`
+    : `你好，${item}我出${offerPrice}元，这是我的诚意价，希望能成交。`;
+  const quick = suggestion && suggestion.median !== null
+    ? `你好，${item}我真心想要，${offerPrice}元可以的话我马上拍，不行的话最多能到${suggestion.median}元。`
+    : `你好，${item}我真心想要，${offerPrice}元可以的话我马上拍。`;
+  return { polite, firm, quick };
+}
+
+function buyerBargainLevel(cutPercent, research, offerPrice) {
+  if (cutPercent <= 10) return { label:"可以出", tone:"mild" };
+  if (cutPercent <= 25) return { label:"可以出", tone:"normal" };
+  if (cutPercent <= 40) {
+    if (research?.suggestion && research.suggestion.low !== null && offerPrice >= research.suggestion.low) {
+      return { label:"可以出", tone:"hard" };
+    }
+    return { label:"可以再加一点", tone:"hard" };
+  }
+  if (research?.suggestion && research.suggestion.low !== null && offerPrice >= research.suggestion.low) {
+    return { label:"可以出", tone:"extreme" };
+  }
+  return { label:"容易被拒", tone:"extreme" };
+}
+
+function buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, category, condition, usageDetails, cutAmount, cutPercent, level, research }) {
+  const factors = [`卖家挂牌${listingPrice}元，你准备出${offerPrice}元，少了${cutAmount}元`];
+  if (research?.suggestion) {
+    factors.push(`同款挂牌价区间${research.suggestion.low}-${research.suggestion.high}元，均价${research.suggestion.average}元`);
+    if (listingPrice > research.suggestion.median) {
+      factors.push(`卖家挂牌价高于同款中位价${research.suggestion.median}元`);
+    } else if (listingPrice < research.suggestion.median) {
+      factors.push(`卖家挂牌价低于同款中位价${research.suggestion.median}元`);
+    }
+  }
+  const missing = [];
+  if (!condition) missing.push("商品成色信息");
+  if (!itemName) missing.push("准确品牌、型号");
+
+  let boundary;
+  if (research?.status === "ready" && research.suggestion) {
+    boundary = `已结合${research.confidence}可信度的公开网页信息。你的出价位于同款挂牌价${offerPrice >= research.suggestion.median ? "中位以上" : "中位以下"}。`;
+  } else if (research?.status === "ready") {
+    boundary = `已查到同款公开挂牌样本，但样本不足，只能判断砍价幅度。`;
+  } else {
+    boundary = `目前只能判断出价与挂牌价的差距，同款市场价需要更多样本。`;
+  }
+
+  let actionText;
+  if (level.tone === "mild" || level.tone === "normal") {
+    actionText = "出价合理，可以直接发消息询价。";
+  } else if (level.tone === "hard") {
+    actionText = research?.suggestion ? `可以试着出价，也可以考虑提高到${research.suggestion.median}元左右。` : "可以试着出价，注意卖家可能会拒绝或还价。";
+  } else {
+    actionText = research?.suggestion && research.suggestion.low !== null
+      ? `出价偏低，建议参考同款挂牌价${research.suggestion.low}-${research.suggestion.high}元调整。`
+      : "出价偏低，容易被拒绝，建议适当提高。";
+  }
+
+  let verdict;
+  if (level.label === "可以出") {
+    verdict = `这刀可以出，${cutPercent}%的砍价幅度${research?.suggestion ? "在同款市场价范围内" : "属于合理范围"}。`;
+  } else if (level.label === "可以再加一点") {
+    verdict = `可以再加一点，${cutPercent}%的砍价幅度${research?.suggestion ? "略低于同款市场价" : "偏大"}。`;
+  } else {
+    verdict = `容易被拒，${cutPercent}%的砍价幅度${research?.suggestion ? "明显低于同款市场价" : "很大"}。`;
+  }
+
+  return {
+    verdict,
+    boundary,
+    factors: factors.slice(0, 3),
+    missing: missing.slice(0, 3),
+    actionText,
+  };
+}
+
 function fallbackBargain({ itemName, listingPrice, offerPrice, originalPrice, floorPrice, category, condition, usageDetails, negotiationPreference, comparablePrices, cutPercent, level, research }) {
   const factors = [`对方从${listingPrice}元砍到${offerPrice}元，少了${Math.max(0, Math.round((listingPrice - offerPrice) * 100) / 100)}元`];
   if (originalPrice !== null) factors.push(`当前挂牌价约为原价的${Math.round(listingPrice / originalPrice * 1000) / 10}%`);
@@ -839,6 +920,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "POST" && req.url === "/api/bargain") {
     try {
       const body = await readBody(req);
+      const role = shortText(body.role, 10) || "seller";
       const hasPreExtraction = body.imageExtraction && typeof body.imageExtraction === "object";
       let extracted = hasPreExtraction ? normalizeBargainExtraction(body.imageExtraction) : {};
       const description = shortText(body.description, 500);
@@ -897,22 +979,17 @@ const server = http.createServer(async (req, res) => {
         return send(res, 400, { error:message });
       }
       if (offerPrice === null) {
-        const message = hasImage && !VISION_READY ? "当前图片识别未配置，请手动填写买家报价" : "请上传清晰截图或填写有效的买家报价";
+        const message = role === "buyer"
+          ? "请填写你准备出的价格"
+          : (hasImage && !VISION_READY ? "当前图片识别未配置，请手动填写买家报价" : "请上传清晰截图或填写有效的买家报价");
         return send(res, 400, { error:message });
       }
       if (originalPrice !== null && originalPrice <= 0) return send(res, 400, { error:"商品原价必须大于0" });
-      if (floorPrice !== null && floorPrice <= 0) return send(res, 400, { error:"心理底价必须大于0" });
+      if (floorPrice !== null && floorPrice <= 0) return send(res, 400, { error:role === "buyer" ? "预算必须大于0" : "心理底价必须大于0" });
 
       const cutAmount = Math.max(0, Math.round((listingPrice - offerPrice) * 100) / 100);
       const cutPercent = Math.round(Math.max(0, cutAmount / listingPrice * 100) * 10) / 10;
-      const level = bargainLevel(cutPercent);
-      const comparison = comparablePrices.length ? {
-        source:"你提供的同款参考价",
-        count:comparablePrices.length,
-        min:Math.min(...comparablePrices),
-        max:Math.max(...comparablePrices),
-        median:median(comparablePrices),
-      } : null;
+
       let research;
       let searchNotice = "";
       try {
@@ -922,6 +999,34 @@ const server = http.createServer(async (req, res) => {
         searchNotice = "联网查价暂时不可用，稍后可以再试。";
         console.error("[刀刀联网查价失败]", error.message || error);
       }
+
+      if (role === "buyer") {
+        const level = buyerBargainLevel(cutPercent, research, offerPrice);
+        const reasoning = buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, category, condition, usageDetails, cutAmount, cutPercent, level, research });
+
+        return send(res, 200, {
+          role:"buyer",
+          itemName:itemName || "这款商品",
+          listingPrice,offerPrice,originalPrice,floorPrice,cutAmount,cutPercent,
+          level:level.label,tone:level.tone,
+          ...reasoning,
+          research,
+          scripts:buyerScripts({ itemName,listingPrice,offerPrice,suggestion:research.suggestion }),
+          screenshotFacts:cleanStringArray(extracted.visibleFacts,[]),
+          analysisMode:research.status === "ready" && research.suggestion ? "联网查价判断" : "价格规则判断",
+          notice:[visionNotice,textNotice,searchNotice].filter(Boolean).join(" "),
+          disclaimer:"结果只用于议价参考，不代表平台真实成交价。",
+        });
+      }
+
+      const level = bargainLevel(cutPercent);
+      const comparison = comparablePrices.length ? {
+        source:"你提供的同款参考价",
+        count:comparablePrices.length,
+        min:Math.min(...comparablePrices),
+        max:Math.max(...comparablePrices),
+        median:median(comparablePrices),
+      } : null;
       const researchEvidence = { ...research,sources:research.sources.map((source) => source.title) };
       const evidence = { itemName,listingPrice,offerPrice,originalPrice,floorPrice,category,condition,usageDetails,negotiationPreference,urgency,
         description,note,comparablePrices,cutAmount,cutPercent,level:level.label,research:researchEvidence,
@@ -949,6 +1054,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       return send(res, 200, {
+        role:"seller",
         itemName:itemName || "这件商品",
         listingPrice,offerPrice,originalPrice,floorPrice,cutAmount,cutPercent,
         listingToOriginalPercent:originalPrice ? Math.round(listingPrice / originalPrice * 1000) / 10 : null,
