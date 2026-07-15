@@ -215,7 +215,7 @@ function marketResearchPrompt({ itemName,category,condition,usageDetails,origina
   "newPrice":{"min":数字或null,"max":数字或null,"evidence":"依据摘要"},
   "usedListing":{"min":数字或null,"max":数字或null,"evidence":"依据摘要"},
   "confirmedSold":{"min":数字或null,"max":数字或null,"evidence":"依据摘要"},
-  "comparables":[{"title":"页面中的商品标题","price":数字,"condition":"页面明确写出的成色，没有则留空","url":"本次搜索结果中的原始链接"}],
+  "comparables":[{"title":"页面中的商品标题","price":人民币数字,"currency":"CNY","condition":"页面明确写出的成色，没有则留空","url":"本次搜索结果中的原始链接"}],
   "observations":["最多3条有来源支持的发现"],
   "limitations":["最多3条数据限制"]
 }`;
@@ -457,6 +457,16 @@ function comparableUrlKey(value) {
   }
 }
 
+function isMainlandResaleSource(value) {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+    const allowed = ["goofish.com","suning.com","jd.com","taobao.com","tmall.com","zhuanzhuan.com","aihuishou.com","paipai.com","kongfz.com","dewu.com"];
+    return allowed.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+  } catch {
+    return false;
+  }
+}
+
 function cleanComparableSamples(value, sources) {
   if (!Array.isArray(value)) return [];
   const sourceByUrl = new Map(sources.map((source) => [comparableUrlKey(source.url), source]));
@@ -467,7 +477,8 @@ function cleanComparableSamples(value, sources) {
     const key = comparableUrlKey(sample.url);
     const source = sourceByUrl.get(key);
     const price = priceNumber(sample.price);
-    if (!source || !key || seen.has(key) || price === null || price <= 0) continue;
+    const currency = shortText(sample.currency, 12).toUpperCase();
+    if (!source || !key || !isMainlandResaleSource(source.url) || !["CNY","RMB","人民币","元"].includes(currency) || seen.has(key) || price === null || price <= 0) continue;
     seen.add(key);
     samples.push({
       title:shortText(sample.title, 100) || source.title,
