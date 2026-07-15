@@ -577,19 +577,34 @@ async function researchMarket(input) {
     const confidence = ["高","中","低"].includes(parsed.confidence) ? parsed.confidence : "低";
     const comparables = cleanComparableSamples(parsed.comparables, sources);
     const suggestion = buildPriceSuggestion(comparables);
+    const hasXianyuSource = sources.some((source) => source.platform === "闲鱼");
+    const comparablePlatform = comparables.length && comparables.every((sample) => sample.platform === "闲鱼") ? "闲鱼" : "公开二手平台";
+    const comparableRange = comparables.length ? {
+      label:`${comparablePlatform}同款挂牌`,
+      min:Math.min(...comparables.map((sample) => sample.price)),
+      max:Math.max(...comparables.map((sample) => sample.price)),
+      evidence:`${comparables.length}条带原始链接的公开在售样本`,
+    } : null;
     const sampleRange = suggestion ? {
       label:`${suggestion.platform}同款挂牌`,
       min:Math.min(...comparables.filter((sample) => suggestion.platform !== "闲鱼" || sample.platform === "闲鱼").map((sample) => sample.price)),
       max:Math.max(...comparables.filter((sample) => suggestion.platform !== "闲鱼" || sample.platform === "闲鱼").map((sample) => sample.price)),
       evidence:`${suggestion.sampleCount}条带原始链接的公开在售样本`,
     } : null;
+    const groundedSummary = suggestion
+      ? `已验证${suggestion.sampleCount}条${suggestion.platform}同款公开挂牌样本，可以计算建议价格。`
+      : comparables.length
+        ? `只验证到${comparables.length}条带原始链接的同款二手挂牌样本，样本不足，暂不计算建议价格。`
+        : "找到了相关公开页面，但没有足够可核验的同款二手挂牌样本，暂不计算建议价格。";
+    const observations = cleanStringArray(parsed.observations,[]).filter((item) => hasXianyuSource || !item.includes("闲鱼"));
     const result = {
-      status:"ready",confidence,summary:shortText(parsed.summary,180) || "已查询公开网页，并按价格类型整理。",
+      status:"ready",confidence:suggestion ? confidence : "低",summary:groundedSummary,
       newPrice:cleanResearchRange(parsed.newPrice,"公开新品价"),
-      usedListing:sampleRange || cleanResearchRange(parsed.usedListing,"二手在售挂牌"),
-      confirmedSold:cleanResearchRange(parsed.confirmedSold,"可确认成交"),
+      usedListing:sampleRange || comparableRange,
+      // 当前只验证公开挂牌样本。没有逐条成交记录链接时，不展示“成交价”。
+      confirmedSold:null,
       comparables,suggestion,
-      observations:cleanStringArray(parsed.observations,[]),limitations:cleanStringArray(parsed.limitations,[]),
+      observations,limitations:cleanStringArray(parsed.limitations,[]),
       sources,searchedAt:Date.now(),cached:false,
     };
     if (MARKET_RESEARCH_CACHE.size >= 100) MARKET_RESEARCH_CACHE.delete(MARKET_RESEARCH_CACHE.keys().next().value);
