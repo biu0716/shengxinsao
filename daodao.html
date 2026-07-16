@@ -174,9 +174,14 @@
     .research-meta { margin:13px 0 0; color:var(--muted); font-size:11px; line-height:1.5; }
     .fact-list { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
     .fact-list li { padding:11px 13px; background:var(--paper-2); border-radius:10px; font-size:14px; line-height:1.5; }
+    .missing-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:13px; }
+    .missing-head h3 { margin-bottom:5px; }
+    .missing-head p { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
+    .refine-button { flex:0 0 auto; min-height:38px; padding:0 13px; background:transparent; border-color:var(--line); font-size:12px; }
     .action-box { padding:16px 18px; border:1.5px solid var(--ink); border-radius:14px; font-weight:750; line-height:1.55; }
     .scripts { display:grid; gap:11px; }
     .script { border:1px solid var(--line); border-radius:14px; padding:15px; }
+    .script.recommended { border-color:var(--ink); background:rgba(255,216,77,.13); }
     .script-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:9px; }
     .script-head strong { font-size:14px; }
     .script p { margin:0; font-size:15px; line-height:1.65; }
@@ -213,6 +218,8 @@
       .price-grid,.context-grid,.detail-grid { grid-template-columns:1fr; }
       .description-head { align-items:flex-start; }
       .context-grid .wide,.detail-grid .wide { grid-column:auto; }
+      .missing-head { flex-direction:column; }
+      .refine-button { width:100%; }
       .actions { grid-template-columns:1fr; }
       .secondary { order:2; }
       .result-hero { padding:25px 20px; }
@@ -506,8 +513,8 @@
 
             <div class="decision-block">
               <div class="decision-head">
-                <h3>再确认 3 件事</h3>
-                <p>成色、使用情况和议价态度会影响同款筛选与建议价格。</p>
+                <h3 id="decisionTitle">再确认 4 件事</h3>
+                <p id="decisionSub">成色、使用情况、你的底线和对方态度会影响判断与回复语气。</p>
               </div>
               <div class="context-grid">
                 <div class="field">
@@ -521,7 +528,7 @@
                   </select>
                 </div>
                 <div class="field">
-                  <label for="negotiationPreference">是否接受议价 <span class="required">必填</span></label>
+                  <label for="negotiationPreference"><span id="negotiationPreferenceLabel">是否接受议价</span> <span class="required" id="negotiationRequired">必填</span></label>
                   <select id="negotiationPreference" name="negotiationPreference" required>
                     <option value="">请选择</option>
                     <option>不接受议价</option>
@@ -529,6 +536,17 @@
                     <option>接近心理底价可出</option>
                     <option>想尽快出，可以多谈</option>
                   </select>
+                </div>
+                <div class="field wide">
+                  <label for="counterpartyTone"><span id="counterpartyToneLabel">对方说话方式</span></label>
+                  <select id="counterpartyTone" name="counterpartyTone">
+                    <option>礼貌询价</option>
+                    <option selected>正常沟通</option>
+                    <option>一上来就大砍价</option>
+                    <option>反复压价</option>
+                    <option>语气不客气</option>
+                  </select>
+                  <p class="helper">不知道怎么选，就保留“正常沟通”。刀刀会据此推荐更合适的回复语气。</p>
                 </div>
                 <div class="field wide">
                   <label for="usageDetails">使用情况 <span class="required">必填</span></label>
@@ -567,12 +585,12 @@
                   <p class="helper">填真实同款的挂牌或成交价，用逗号分开。系统不会自己编行情。</p>
                 </div>
                 <div class="field">
-                  <label for="urgency">出手速度</label>
+                  <label for="urgency" id="urgencyLabel">出手速度</label>
                   <select id="urgency" name="urgency"><option>不急</option><option>普通</option><option>尽快</option></select>
                 </div>
                 <div class="field wide">
                   <label for="note">其他说明</label>
-                  <textarea id="note" name="note" maxlength="300" placeholder="例如：穿过三次，无破损，包邮"></textarea>
+                  <textarea id="note" name="note" maxlength="300" placeholder="例如：M码、黑色、配件齐全、包邮"></textarea>
                 </div>
               </div>
             </details>
@@ -630,7 +648,10 @@
               <ul class="fact-list" id="factors"></ul>
             </section>
             <section class="section" id="missingSection">
-              <h3>还需要你确认</h3>
+              <div class="missing-head">
+                <div><h3>想让判断更准，可以补充</h3><p>这些不是必填错误。有信息就补，没有也可以先参考当前结果。</p></div>
+                <button class="refine-button" id="refineButton" type="button">回去补充</button>
+              </div>
               <ul class="fact-list" id="missing"></ul>
             </section>
             <section class="section">
@@ -687,12 +708,22 @@
     const offerPriceInput = document.getElementById("offerPrice");
     const floorPriceInput = document.getElementById("floorPrice");
     const negotiationPreferenceInput = document.getElementById("negotiationPreference");
+    const negotiationPreferenceLabel = document.getElementById("negotiationPreferenceLabel");
+    const negotiationRequired = document.getElementById("negotiationRequired");
+    const counterpartyToneInput = document.getElementById("counterpartyTone");
+    const counterpartyToneLabel = document.getElementById("counterpartyToneLabel");
+    const decisionTitle = document.getElementById("decisionTitle");
+    const decisionSub = document.getElementById("decisionSub");
+    const urgencyLabel = document.getElementById("urgencyLabel");
+    const refineButton = document.getElementById("refineButton");
+    const noteInput = document.getElementById("note");
     const cutAmountLabel = document.getElementById("cutAmountLabel");
     const listingMetricLabel = document.getElementById("listingMetricLabel");
     const thirdMetricLabel = document.getElementById("thirdMetricLabel");
     let imageData = "";
     let imageExtraction = null;
     let latestScripts = {};
+    let latestMissing = [];
     let recognition = null;
     let isListening = false;
     let isExtractingImage = false;
@@ -736,6 +767,17 @@
       submitButton.textContent = isExtractingImage ? "正在识别截图" : isListening ? "请先说完" : (roleInput.value === "buyer" ? "判断这刀能不能出" : "生成议价单");
     }
 
+    function setSelectOptions(select, values, selectedValue) {
+      select.replaceChildren();
+      values.forEach(({ label, value = label }) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        option.defaultSelected = value === selectedValue;
+        select.appendChild(option);
+      });
+    }
+
     function switchRole(role) {
       sellerModeButton.classList.toggle("active", role === "seller");
       buyerModeButton.classList.toggle("active", role === "buyer");
@@ -744,6 +786,12 @@
         listingPriceLabel.textContent = "我的挂牌价";
         offerPriceLabel.textContent = "对方报价";
         floorPriceLabel.textContent = "我的心理底价";
+        negotiationPreferenceLabel.textContent = "是否接受议价";
+        negotiationRequired.style.display = "inline";
+        counterpartyToneLabel.textContent = "买家说话方式";
+        decisionTitle.textContent = "再确认 4 件事";
+        decisionSub.textContent = "成色、使用情况、你的底线和买家态度会影响判断与回复语气。";
+        urgencyLabel.textContent = "出手速度";
         formStep.textContent = "新建议价单";
         formTitle.textContent = "新建一笔议价判断";
         formSub.textContent = "上传截图、打字或语音，选一种即可。识别出的内容可以修改。";
@@ -752,11 +800,25 @@
         offerPriceInput.placeholder = "60";
         floorPriceInput.placeholder = "95";
         negotiationPreferenceInput.required = true;
+        setSelectOptions(negotiationPreferenceInput, [
+          { label:"请选择",value:"" },{ label:"不接受议价" },{ label:"可以小刀" },
+          { label:"接近心理底价可出" },{ label:"想尽快出，可以多谈" },
+        ], "");
+        setSelectOptions(counterpartyToneInput, [
+          { label:"礼貌询价" },{ label:"正常沟通" },{ label:"一上来就大砍价" },
+          { label:"反复压价" },{ label:"语气不客气" },
+        ], "正常沟通");
         submitButton.textContent = "生成议价单";
       } else {
         listingPriceLabel.textContent = "卖家挂牌价";
         offerPriceLabel.textContent = "我准备出价";
         floorPriceLabel.textContent = "我的最高预算";
+        negotiationPreferenceLabel.textContent = "卖家是否接受议价";
+        negotiationRequired.style.display = "none";
+        counterpartyToneLabel.textContent = "卖家说话方式";
+        decisionTitle.textContent = "再确认商品和卖家态度";
+        decisionSub.textContent = "成色、使用情况、卖家议价态度和说话方式会影响出价建议与回复语气。";
+        urgencyLabel.textContent = "购买急迫度";
         formStep.textContent = "新出价判断";
         formTitle.textContent = "判断这笔出价";
         formSub.textContent = "上传截图、打字或语音，选一种即可。识别出的内容可以修改。";
@@ -765,6 +827,14 @@
         offerPriceInput.placeholder = "80";
         floorPriceInput.placeholder = "95";
         negotiationPreferenceInput.required = false;
+        setSelectOptions(negotiationPreferenceInput, [
+          { label:"卖家还没表态" },{ label:"卖家明确不议价" },{ label:"卖家接受小刀" },
+          { label:"卖家愿意继续谈" },{ label:"卖家催促尽快交易" },
+        ], "卖家还没表态");
+        setSelectOptions(counterpartyToneInput, [
+          { label:"礼貌沟通" },{ label:"正常沟通" },{ label:"回复冷淡" },
+          { label:"态度强硬" },{ label:"催着成交" },
+        ], "正常沟通");
         submitButton.textContent = "判断这刀能不能出";
       }
 
@@ -964,6 +1034,7 @@
         document.getElementById("category").value = "运动装备";
         document.getElementById("condition").value = "轻度使用";
         document.getElementById("negotiationPreference").value = "可以小刀";
+        counterpartyToneInput.value = "一上来就大砍价";
         document.getElementById("usageDetails").value = "穿过3次，已清洗，无破损和明显磨损";
         document.getElementById("note").value = "";
       } else {
@@ -975,7 +1046,8 @@
         document.getElementById("floorPrice").value = "95";
         document.getElementById("category").value = "运动装备";
         document.getElementById("condition").value = "轻度使用";
-        document.getElementById("negotiationPreference").value = "";
+        document.getElementById("negotiationPreference").value = "卖家还没表态";
+        counterpartyToneInput.value = "正常沟通";
         document.getElementById("usageDetails").value = "卖家说穿过3次，已清洗，无破损";
         document.getElementById("note").value = "";
       }
@@ -1061,6 +1133,20 @@
       document.getElementById("researchMeta").textContent = [searchedAt ? `查询时间 ${searchedAt}` : "",research.cached ? "使用近期缓存" : "",limitation,"公开挂牌价不等于真实成交价"].filter(Boolean).join("。") + "。";
     }
 
+    function updateScriptPresentation(role, recommendedScript) {
+      const scriptsContainer = document.querySelector(".scripts");
+      const scriptCards = scriptsContainer.querySelectorAll(".script");
+      const scriptHeaders = scriptsContainer.querySelectorAll(".script-head strong");
+      const keys = ["polite","firm","quick"];
+      const titles = role === "buyer"
+        ? ["礼貌试探","直接出价","简短一点"]
+        : ["礼貌一点","直接一点","强硬一点"];
+      scriptHeaders.forEach((header, index) => {
+        header.textContent = titles[index] + (keys[index] === recommendedScript ? " · 更适合这次" : "");
+        scriptCards[index].classList.toggle("recommended", keys[index] === recommendedScript);
+      });
+    }
+
     function renderResult(data) {
       document.getElementById("resultLabel").textContent = data.level;
       document.getElementById("cutPercent").textContent = data.cutPercent;
@@ -1075,17 +1161,6 @@
         document.getElementById("listingMetric").textContent = money(data.listingPrice);
         document.getElementById("originalPriceMetric").textContent = data.floorPrice === null ? "未填写" : money(data.floorPrice);
 
-        const scriptsContainer = document.querySelector(".scripts");
-        const scriptHeaders = scriptsContainer.querySelectorAll(".script-head strong");
-        const copyButtons = scriptsContainer.querySelectorAll(".copy-btn");
-
-        scriptHeaders[0].textContent = "礼貌询价";
-        scriptHeaders[1].textContent = "说明依据";
-        scriptHeaders[2].textContent = "诚意成交";
-
-        copyButtons[0].dataset.copy = "polite";
-        copyButtons[1].dataset.copy = "firm";
-        copyButtons[2].dataset.copy = "quick";
       } else {
         document.getElementById("priceLine").textContent = `对方想从 ${money(data.listingPrice)} 刀到 ${money(data.offerPrice)}`;
         cutAmountLabel.textContent = "一共刀掉";
@@ -1095,24 +1170,15 @@
         document.getElementById("listingMetric").textContent = money(data.listingPrice);
         document.getElementById("originalPriceMetric").textContent = data.originalPrice === null ? "截图未显示" : money(data.originalPrice);
 
-        const scriptsContainer = document.querySelector(".scripts");
-        const scriptHeaders = scriptsContainer.querySelectorAll(".script-head strong");
-        const copyButtons = scriptsContainer.querySelectorAll(".copy-btn");
-
-        scriptHeaders[0].textContent = "客气回价";
-        scriptHeaders[1].textContent = "明确底线";
-        scriptHeaders[2].textContent = "想快点出";
-
-        copyButtons[0].dataset.copy = "polite";
-        copyButtons[1].dataset.copy = "firm";
-        copyButtons[2].dataset.copy = "quick";
       }
 
+      updateScriptPresentation(data.role, data.recommendedScript);
       document.getElementById("verdict").textContent = data.verdict;
       document.getElementById("boundary").textContent = data.boundary;
       renderResearch(data.research);
       setList("factors", data.factors);
       setList("missing", data.missing);
+      latestMissing = data.missing || [];
       document.getElementById("missingSection").style.display = data.missing && data.missing.length ? "block" : "none";
       document.getElementById("actionText").textContent = data.actionText;
       latestScripts = data.scripts || {};
@@ -1163,6 +1229,23 @@
         button.classList.add("copied");
         setTimeout(() => { button.textContent = "复制"; button.classList.remove("copied"); }, 1600);
       });
+    });
+
+    refineButton.addEventListener("click", () => {
+      result.style.display = "none";
+      form.style.display = "block";
+      document.querySelector("details").open = true;
+      const missingText = latestMissing.join(" ");
+      const target = /品牌|商品名|型号/.test(missingText)
+        ? itemNameInput
+        : /成色/.test(missingText)
+          ? document.getElementById("condition")
+          : /使用次数|清洁|瑕疵|磨损/.test(missingText)
+            ? document.getElementById("usageDetails")
+            : noteInput;
+      setFormStatus("请补充你知道的信息，再点一次判断。不知道的内容可以留空。", "success");
+      document.getElementById("analyzer").scrollIntoView({ behavior:"smooth",block:"start" });
+      target.focus({ preventScroll:true });
     });
 
     document.getElementById("againButton").addEventListener("click", () => {

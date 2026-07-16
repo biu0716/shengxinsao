@@ -342,33 +342,42 @@ function median(values) {
   return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) * 50) / 100;
 }
 
-function sellerScripts({ itemName, listingPrice, offerPrice, floorPrice, urgency, negotiationPreference }) {
-  const item = itemName ? `这件${itemName}` : "这件商品";
+function recommendedScriptForTone(counterpartyTone, role, urgency) {
+  if (/礼貌|好沟通/.test(counterpartyTone)) return "polite";
+  if (/大砍价|反复压价|不客气|强硬|回复冷淡|不议价|催着成交/.test(counterpartyTone)) return "quick";
+  if (role === "seller" && urgency === "尽快") return "firm";
+  return "firm";
+}
+
+function sellerScripts({ listingPrice, offerPrice, floorPrice, urgency, negotiationPreference, counterpartyTone }) {
+  const toughReply = /大砍价|反复压价|不客气|强硬/.test(counterpartyTone);
   if (offerPrice >= listingPrice) {
     return {
-      polite: `可以，${offerPrice}元我能接受，直接拍就好。`,
-      firm: `${item}${offerPrice}元可以出，按平台流程交易。`,
-      quick: `这个价格可以成交，拍下后我尽快发出。`,
+      polite: `可以的，${offerPrice}元没问题，你直接拍就行。`,
+      firm: `${offerPrice}元可以，按平台流程拍就好。`,
+      quick: `这个价格可以。拍下后我${urgency === "尽快" ? "今天尽快" : "确认后"}发出。`,
     };
   }
   if (negotiationPreference === "不接受议价") {
     return {
-      polite: `谢谢喜欢，${item}按${listingPrice}元出，暂时不议价。`,
-      firm: `${item}不议价，${offerPrice}元不出。`,
-      quick: `价格已经定好，${listingPrice}元可以直接拍。`,
+      polite: `谢谢喜欢～这件已经是最低价了，${listingPrice}元不议哦。`,
+      firm: `${listingPrice}元不议价，${offerPrice}元不出。`,
+      quick: `${offerPrice}元不出，标价${listingPrice}元。价格合适再聊。`,
     };
   }
   if (floorPrice !== null) {
     return {
-      polite: `谢谢喜欢，${offerPrice}元差距有点大，我最低${floorPrice}元，能接受的话可以直接拍。`,
-      firm: `${item}最低${floorPrice}元，${offerPrice}元不出。`,
-      quick: urgency === "尽快" ? `想尽快出，${floorPrice}元可以成交，合适就拍。` : `诚心要的话，${floorPrice}元可以成交。`,
+      polite: `谢谢喜欢～${offerPrice}元确实差得有点多，${floorPrice}元可以的话我就给你。`,
+      firm: `${offerPrice}元不行，最低${floorPrice}元，能接受就拍。`,
+      quick: toughReply
+        ? `${offerPrice}元不出，最低${floorPrice}元。价格合适再聊。`
+        : `最低${floorPrice}元，低于这个就不出了，理解一下。`,
     };
   }
   return {
-    polite: `谢谢喜欢，${offerPrice}元差距有点大，可以小刀，但这个价格暂时不考虑。`,
-    firm: `${item}${offerPrice}元不出，和${listingPrice}元挂牌价差距太大。`,
-    quick: "诚心要可以再报一个接近挂牌价的价格，我确认后回复你。",
+    polite: `谢谢喜欢～${offerPrice}元有点低了，可以小刀，但这个价暂时不考虑。`,
+    firm: `${offerPrice}元不合适，和挂牌价${listingPrice}元差得有点多。你可以重新报个价。`,
+    quick: toughReply ? `${offerPrice}元不出，想要的话请按合理价格来。` : "这个价格不考虑，诚心要可以再报一次。",
   };
 }
 
@@ -398,21 +407,19 @@ function buyerPriceGuidance({ listingPrice, offerPrice, budget, suggestion }) {
   return { status:"below_reference",maxAcceptPrice:Math.min(listingPrice, suggestion.low, budgetCap ?? listingPrice) };
 }
 
-function buyerScripts({ itemName, listingPrice, offerPrice, budget, suggestion, guidance }) {
-  const item = itemName ? `这款${itemName}` : "这款商品";
+function buyerScripts({ listingPrice, offerPrice, suggestion, guidance, counterpartyTone }) {
   const proposedOffer = guidance?.status === "no_need_to_raise"
     ? listingPrice
     : guidance?.status === "above_reference" && guidance.maxAcceptPrice !== null
       ? guidance.maxAcceptPrice
       : offerPrice;
-  const polite = `你好，${item}我感兴趣，请问${proposedOffer}元可以出吗？`;
-  const firm = suggestion && suggestion.low !== null
-    ? `你好，${item}我参考了同款${suggestion.low}-${suggestion.high}元的公开挂牌，出${proposedOffer}元可以吗？`
-    : `你好，${item}我出${proposedOffer}元，这是我的诚意价，希望能成交。`;
-  const maxAcceptPrice = guidance?.maxAcceptPrice ?? (budget === null ? null : Math.min(listingPrice, budget));
-  const quick = maxAcceptPrice !== null && maxAcceptPrice > offerPrice
-    ? `你好，${item}我真心想要，${proposedOffer}元可以的话我马上拍。如果成色与描述一致，我最多能到${maxAcceptPrice}元。`
-    : `你好，${item}我真心想要，${proposedOffer}元可以的话我马上拍。`;
+  const polite = `你好，挺喜欢这件的，${proposedOffer}元可以吗？可以的话我现在拍。`;
+  const firm = suggestion && proposedOffer >= suggestion.low && proposedOffer <= suggestion.high
+    ? `我看了下同款公开挂牌大概在${suggestion.low}-${suggestion.high}元，结合成色，我出${proposedOffer}元，可以的话现在拍。`
+    : `我这边出${proposedOffer}元，合适的话可以现在拍。`;
+  const quick = /回复冷淡|不议价|催着成交|不客气|强硬/.test(counterpartyTone)
+    ? `${proposedOffer}元能出我就拍，不方便就算了。`
+    : `${proposedOffer}元可以的话我现在拍，麻烦给个准价。`;
   return { polite, firm, quick };
 }
 
@@ -442,8 +449,8 @@ function buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, conditi
     }
   }
   const missing = [];
-  if (!condition) missing.push("商品成色信息");
-  if (!itemName) missing.push("准确品牌、型号");
+  if (!condition) missing.push("请选择真实成色");
+  if (!itemName) missing.push("补充准确品牌和型号");
 
   let boundary;
   if (research?.status === "ready" && research.suggestion) {
@@ -515,10 +522,10 @@ function fallbackBargain({ itemName, listingPrice, offerPrice, originalPrice, fl
   if (originalPrice !== null) factors.push(`当前挂牌价约为原价的${Math.round(listingPrice / originalPrice * 1000) / 10}%`);
   if (category) factors.push(`品类是${category}${condition ? `，成色为${condition}` : ""}`);
   const missing = [];
-  if (!condition) missing.push("更具体的使用痕迹和成色");
-  if (!usageDetails) missing.push("使用次数、时长、清洁情况和瑕疵");
-  if (!negotiationPreference) missing.push("是否接受议价");
-  if (!itemName) missing.push("准确品牌、型号或款式");
+  if (!condition) missing.push("请选择真实成色");
+  if (!usageDetails) missing.push("补充使用次数、清洁情况和瑕疵");
+  if (!negotiationPreference) missing.push("选择是否接受议价");
+  if (!itemName) missing.push("补充准确品牌、型号或款式");
   const boundary = research?.status === "ready"
     ? `已结合${research.confidence}可信度的公开网页信息，但公开挂牌价不等于真实成交价。`
     : comparablePrices.length
@@ -553,8 +560,24 @@ function userConfirmationArray(value, fallback, evidence = {}) {
     !/(成交价|市场价|行情|新品.{0,4}价|售价|挂牌价|同款.{0,8}价|类似.{0,8}价|平台.{0,8}价|二手.{0,8}价|购买意图|急迫性|急不急)/.test(item)
   ).filter((item) => !(evidence.condition && /商品成色|成色信息/.test(item)))
     .filter((item) => !(evidence.usageDetails && /使用时长|使用次数|使用情况|状态信息/.test(item)))
-    .filter((item) => !(evidence.negotiationPreference && /是否接受议价|议价态度|卖家.{0,6}议价/.test(item)));
+    .filter((item) => !(evidence.negotiationPreference && /是否接受议价|议价态度|卖家.{0,6}议价/.test(item)))
+    .filter((item) => !(
+      /尺码|颜色/.test(item)
+      && /尺码|颜色|\b(?:XS|S|M|L|XL|XXL)\b/i.test(`${evidence.itemName || ""} ${evidence.note || ""}`)
+    ));
   return filtered.length ? filtered : fallback;
+}
+
+function actionableMissingArray(value, fallback, evidence = {}) {
+  return userConfirmationArray(value, fallback, evidence).map((item) => {
+    if (/尺码|颜色/.test(item)) return "在“其他说明”里补充商品尺码和颜色";
+    if (/配件|包装/.test(item)) return "在“其他说明”里补充配件和包装是否齐全";
+    if (/瑕疵|磨损/.test(item)) return "补充具体瑕疵和磨损情况";
+    if (/成色/.test(item)) return "请选择真实成色";
+    if (/使用次数|使用时长|使用情况|清洁/.test(item)) return "补充使用次数、清洁情况和瑕疵";
+    if (/品牌|型号|商品名/.test(item)) return "补充准确品牌、商品名和型号";
+    return item.replace(/对价格(?:的)?影响.*$/, "").replace(/会影响.*$/, "").replace(/[。；;]+$/, "").trim();
+  }).filter(Boolean).slice(0, 3);
 }
 
 function parseJSONObject(value) {
@@ -1027,6 +1050,7 @@ const server = http.createServer(async (req, res) => {
       const condition = shortText(body.condition, 30) || shortText(textExtracted.condition, 30);
       const usageDetails = shortText(body.usageDetails, 120);
       const negotiationPreference = shortText(body.negotiationPreference, 30);
+      const counterpartyTone = shortText(body.counterpartyTone, 30) || "正常沟通";
       const urgency = shortText(body.urgency, 10);
       const note = shortText(body.note, 300);
       const comparablePrices = priceList(body.comparablePrices);
@@ -1065,15 +1089,17 @@ const server = http.createServer(async (req, res) => {
         const guidance = buyerPriceGuidance({ listingPrice, offerPrice, budget:floorPrice, suggestion:research.suggestion });
         const level = buyerBargainLevel(cutPercent, guidance);
         const reasoning = buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, condition, cutAmount, cutPercent, level, research, guidance });
+        const recommendedScript = recommendedScriptForTone(counterpartyTone, "buyer", urgency);
 
         return send(res, 200, {
           role:"buyer",
           itemName:itemName || "这款商品",
-          listingPrice,offerPrice,originalPrice,floorPrice,cutAmount,cutPercent,
+          listingPrice,offerPrice,originalPrice,floorPrice,counterpartyTone,cutAmount,cutPercent,
           level:level.label,tone:level.tone,
           ...reasoning,
           research,
-          scripts:buyerScripts({ itemName,listingPrice,offerPrice,budget:floorPrice,suggestion:research.suggestion,guidance }),
+          scripts:buyerScripts({ listingPrice,offerPrice,suggestion:research.suggestion,guidance,counterpartyTone }),
+          recommendedScript,
           screenshotFacts:cleanStringArray(extracted.visibleFacts,[]),
           analysisMode:research.status === "ready" && research.suggestion ? "联网查价判断" : "价格规则判断",
           notice:[visionNotice,textNotice,searchNotice].filter(Boolean).join(" "),
@@ -1090,7 +1116,7 @@ const server = http.createServer(async (req, res) => {
         median:median(comparablePrices),
       } : null;
       const researchEvidence = { ...research,sources:research.sources.map((source) => source.title) };
-      const evidence = { itemName,listingPrice,offerPrice,originalPrice,floorPrice,category,condition,usageDetails,negotiationPreference,urgency,
+      const evidence = { itemName,listingPrice,offerPrice,originalPrice,floorPrice,category,condition,usageDetails,negotiationPreference,counterpartyTone,urgency,
         description,note,comparablePrices,cutAmount,cutPercent,level:level.label,research:researchEvidence,
         screenshotFacts:cleanStringArray(extracted.visibleFacts,[]),chatSummary:shortText(extracted.chatSummary,120) };
       const fallback = fallbackBargain({ ...evidence,level,research });
@@ -1105,7 +1131,7 @@ const server = http.createServer(async (req, res) => {
             verdict: shortText(ai.verdict, 100) || fallback.verdict,
             boundary: research.status === "ready" ? fallback.boundary : shortText(ai.boundary, 140) || fallback.boundary,
             factors: cleanStringArray(ai.factors, fallback.factors),
-            missing: userConfirmationArray(ai.missing, fallback.missing, evidence),
+            missing: actionableMissingArray(ai.missing, fallback.missing, evidence),
             actionText: shortText(ai.actionText, 100) || fallback.actionText,
           };
           aiUsed = true;
@@ -1118,12 +1144,13 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, {
         role:"seller",
         itemName:itemName || "这件商品",
-        listingPrice,offerPrice,originalPrice,floorPrice,cutAmount,cutPercent,
+        listingPrice,offerPrice,originalPrice,floorPrice,counterpartyTone,cutAmount,cutPercent,
         listingToOriginalPercent:originalPrice ? Math.round(listingPrice / originalPrice * 1000) / 10 : null,
         level:level.label,tone:level.tone,comparison,
         ...reasoning,
         research,
-        scripts:sellerScripts({ itemName,listingPrice,offerPrice,floorPrice,urgency,negotiationPreference }),
+        scripts:sellerScripts({ listingPrice,offerPrice,floorPrice,urgency,negotiationPreference,counterpartyTone }),
+        recommendedScript:recommendedScriptForTone(counterpartyTone, "seller", urgency),
         screenshotFacts:evidence.screenshotFacts,
         analysisMode:research.status === "ready" ? "联网查价判断" : aiUsed ? "AI辅助判断" : "价格规则判断",
         notice:[visionNotice,textNotice,searchNotice,aiNotice].filter(Boolean).join(" "),
