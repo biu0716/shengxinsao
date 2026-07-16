@@ -601,9 +601,9 @@
           </div>
           <div class="result-body">
             <div class="metrics">
-              <div class="metric"><span>一共刀掉</span><strong id="cutAmount"></strong></div>
-              <div class="metric"><span>我的挂牌价</span><strong id="listingMetric"></strong></div>
-              <div class="metric"><span>商品原价</span><strong id="originalPriceMetric"></strong></div>
+              <div class="metric"><span id="cutAmountLabel">一共刀掉</span><strong id="cutAmount"></strong></div>
+              <div class="metric"><span id="listingMetricLabel">我的挂牌价</span><strong id="listingMetric"></strong></div>
+              <div class="metric"><span id="thirdMetricLabel">商品原价</span><strong id="originalPriceMetric"></strong></div>
             </div>
             <div class="verdict"><strong id="verdict"></strong><p id="boundary"></p></div>
 
@@ -612,8 +612,8 @@
               <div class="research-panel" id="researchPanel">
                 <p class="research-summary" id="researchSummary"></p>
                 <div class="price-suggestion unavailable" id="priceSuggestion">
-                  <span class="suggestion-label" id="suggestionLabel">建议回价参考</span>
-                  <strong class="suggestion-range" id="suggestionRange">样本不足，暂不建议价格</strong>
+                  <span class="suggestion-label" id="suggestionLabel">公开挂牌参考</span>
+                  <strong class="suggestion-range" id="suggestionRange">样本不足，暂不提供价格区间</strong>
                   <p class="suggestion-detail" id="suggestionDetail">至少需要3条带原始链接的同款二手挂牌样本。</p>
                   <div class="suggestion-stats" id="suggestionStats"></div>
                   <div class="sample-list" id="comparableSamples"></div>
@@ -687,6 +687,9 @@
     const offerPriceInput = document.getElementById("offerPrice");
     const floorPriceInput = document.getElementById("floorPrice");
     const negotiationPreferenceInput = document.getElementById("negotiationPreference");
+    const cutAmountLabel = document.getElementById("cutAmountLabel");
+    const listingMetricLabel = document.getElementById("listingMetricLabel");
+    const thirdMetricLabel = document.getElementById("thirdMetricLabel");
     let imageData = "";
     let imageExtraction = null;
     let latestScripts = {};
@@ -734,7 +737,6 @@
     }
 
     function switchRole(role) {
-      roleInput.value = role;
       sellerModeButton.classList.toggle("active", role === "seller");
       buyerModeButton.classList.toggle("active", role === "buyer");
 
@@ -766,10 +768,12 @@
         submitButton.textContent = "判断这刀能不能出";
       }
 
-      resetImage();
       form.reset();
       roleInput.value = role;
-      status.textContent = "";
+      resetImage();
+      result.style.display = "none";
+      loading.style.display = "none";
+      form.style.display = "block";
     }
 
     function resetImage() {
@@ -808,11 +812,11 @@
         imageExtraction = data;
         fillRecognizedField("itemName", data.itemName);
         fillRecognizedField("listingPrice", data.listingPrice);
-        fillRecognizedField("offerPrice", data.offerPrice);
+        if (roleInput.value === "seller") fillRecognizedField("offerPrice", data.offerPrice);
         fillRecognizedField("originalPrice", data.originalPrice);
         const priceFacts = [
           data.listingPrice != null ? `挂牌价 ¥${data.listingPrice}` : "",
-          data.offerPrice != null ? `对方报价 ¥${data.offerPrice}` : "",
+          roleInput.value === "seller" && data.offerPrice != null ? `对方报价 ¥${data.offerPrice}` : "",
           data.originalPrice != null ? `商品原价 ¥${data.originalPrice}` : "",
         ].filter(Boolean);
         const recognizedName = itemNameInput.value.trim();
@@ -908,7 +912,9 @@
         voiceButton.classList.add("listening");
         voiceButton.setAttribute("aria-pressed", "true");
         updateSubmitState();
-        voiceStatus.textContent = "正在听，请说出商品、挂牌价和对方报价。";
+        voiceStatus.textContent = roleInput.value === "buyer"
+          ? "正在听，请说出商品、卖家挂牌价、准备出价和最高预算。"
+          : "正在听，请说出商品、挂牌价和对方报价。";
       };
       recognition.onresult = (event) => {
         const transcript = Array.from(event.results).map((result) => result[0].transcript).join("");
@@ -950,29 +956,30 @@
       document.querySelector("details").open = true;
       if (roleInput.value === "seller") {
         descriptionInput.value = "我在卖一条骑行裤，原价400元，穿过几次，挂110元，对方只出60元，我最低95元。";
-        document.getElementById("listingPrice").value = "";
-        document.getElementById("offerPrice").value = "";
-        document.getElementById("itemName").value = "";
-        document.getElementById("originalPrice").value = "";
-        document.getElementById("floorPrice").value = "";
-        document.getElementById("category").value = "";
+        document.getElementById("listingPrice").value = "110";
+        document.getElementById("offerPrice").value = "60";
+        document.getElementById("itemName").value = "迪卡侬 Van Rysel 男士骑行背带裤";
+        document.getElementById("originalPrice").value = "400";
+        document.getElementById("floorPrice").value = "95";
+        document.getElementById("category").value = "运动装备";
         document.getElementById("condition").value = "轻度使用";
         document.getElementById("negotiationPreference").value = "可以小刀";
         document.getElementById("usageDetails").value = "穿过3次，已清洗，无破损和明显磨损";
         document.getElementById("note").value = "";
       } else {
         descriptionInput.value = "卖家挂一条骑行裤110元，成色轻度使用，我想80元拿下，最高预算95元。";
-        document.getElementById("listingPrice").value = "";
-        document.getElementById("offerPrice").value = "";
-        document.getElementById("itemName").value = "";
-        document.getElementById("originalPrice").value = "";
-        document.getElementById("floorPrice").value = "";
-        document.getElementById("category").value = "";
+        document.getElementById("listingPrice").value = "110";
+        document.getElementById("offerPrice").value = "80";
+        document.getElementById("itemName").value = "迪卡侬 Van Rysel 男士骑行背带裤";
+        document.getElementById("originalPrice").value = "400";
+        document.getElementById("floorPrice").value = "95";
+        document.getElementById("category").value = "运动装备";
         document.getElementById("condition").value = "轻度使用";
         document.getElementById("negotiationPreference").value = "";
         document.getElementById("usageDetails").value = "卖家说穿过3次，已清洗，无破损";
         document.getElementById("note").value = "";
       }
+      itemNameInput.dispatchEvent(new Event("input"));
       form.requestSubmit();
     });
 
@@ -1003,8 +1010,8 @@
       confidence.textContent = research.status === "ready" ? "已核验公开来源" : research.status === "needs_item" ? "需要准确商品名" : "公开样本不足";
       document.getElementById("researchSummary").textContent = research.summary || "没有找到可核验的公开价格。";
       suggestionBox.classList.toggle("unavailable", !suggestion);
-      document.getElementById("suggestionLabel").textContent = suggestion ? `建议回价参考（${suggestion.platform}样本）` : "建议回价参考";
-      document.getElementById("suggestionRange").textContent = suggestion ? `${money(suggestion.low)} - ${money(suggestion.high)}` : "样本不足，暂不建议价格";
+      document.getElementById("suggestionLabel").textContent = suggestion ? `公开挂牌参考（${suggestion.platform}样本）` : "公开挂牌参考";
+      document.getElementById("suggestionRange").textContent = suggestion ? `${money(suggestion.low)} - ${money(suggestion.high)}` : "样本不足，暂不提供价格区间";
       document.getElementById("suggestionDetail").textContent = suggestion
         ? `${suggestion.basis}。这是同款公开挂牌参考，不是平台成交价。`
         : `目前只有${(research.comparables || []).length}条可核验同款样本，至少需要3条才计算建议价格。`;
@@ -1061,9 +1068,12 @@
 
       if (data.role === "buyer") {
         document.getElementById("priceLine").textContent = `卖家挂牌 ${money(data.listingPrice)}，你准备出 ${money(data.offerPrice)}`;
+        cutAmountLabel.textContent = "准备刀掉";
+        listingMetricLabel.textContent = "卖家挂牌价";
+        thirdMetricLabel.textContent = "最高预算";
         document.getElementById("cutAmount").textContent = money(data.cutAmount);
         document.getElementById("listingMetric").textContent = money(data.listingPrice);
-        document.getElementById("originalPriceMetric").textContent = data.originalPrice === null ? "未填写" : money(data.originalPrice);
+        document.getElementById("originalPriceMetric").textContent = data.floorPrice === null ? "未填写" : money(data.floorPrice);
 
         const scriptsContainer = document.querySelector(".scripts");
         const scriptHeaders = scriptsContainer.querySelectorAll(".script-head strong");
@@ -1078,6 +1088,9 @@
         copyButtons[2].dataset.copy = "quick";
       } else {
         document.getElementById("priceLine").textContent = `对方想从 ${money(data.listingPrice)} 刀到 ${money(data.offerPrice)}`;
+        cutAmountLabel.textContent = "一共刀掉";
+        listingMetricLabel.textContent = "我的挂牌价";
+        thirdMetricLabel.textContent = "商品原价";
         document.getElementById("cutAmount").textContent = money(data.cutAmount);
         document.getElementById("listingMetric").textContent = money(data.listingPrice);
         document.getElementById("originalPriceMetric").textContent = data.originalPrice === null ? "截图未显示" : money(data.originalPrice);

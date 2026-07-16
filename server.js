@@ -372,43 +372,73 @@ function sellerScripts({ itemName, listingPrice, offerPrice, floorPrice, urgency
   };
 }
 
-function buyerScripts({ itemName, listingPrice, offerPrice, suggestion }) {
+function buyerPriceGuidance({ listingPrice, offerPrice, budget, suggestion }) {
+  const budgetCap = budget === null ? null : Math.min(listingPrice, budget);
+  const maxAcceptPrice = suggestion && suggestion.median !== null
+    ? Math.min(listingPrice, suggestion.median, budgetCap ?? listingPrice)
+    : budgetCap;
+  if (offerPrice >= listingPrice) {
+    if (suggestion && listingPrice > suggestion.high) {
+      return { status:"above_reference",maxAcceptPrice };
+    }
+    return { status:"no_need_to_raise",maxAcceptPrice:listingPrice };
+  }
+  if (!suggestion) {
+    return { status:"no_samples",maxAcceptPrice };
+  }
+  if (budget !== null && budget < suggestion.low) {
+    return { status:"budget_below_reference",maxAcceptPrice:budget };
+  }
+  if (offerPrice > suggestion.high) {
+    return { status:"above_reference",maxAcceptPrice };
+  }
+  if (offerPrice >= suggestion.low) {
+    return { status:"within_reference",maxAcceptPrice };
+  }
+  return { status:"below_reference",maxAcceptPrice:Math.min(listingPrice, suggestion.low, budgetCap ?? listingPrice) };
+}
+
+function buyerScripts({ itemName, listingPrice, offerPrice, budget, suggestion, guidance }) {
   const item = itemName ? `这款${itemName}` : "这款商品";
-  const polite = suggestion && suggestion.low !== null
-    ? `你好，${item}我感兴趣，请问${offerPrice}元可以出吗？`
-    : `你好，${item}我感兴趣，请问${offerPrice}元可以出吗？`;
+  const proposedOffer = guidance?.status === "no_need_to_raise"
+    ? listingPrice
+    : guidance?.status === "above_reference" && guidance.maxAcceptPrice !== null
+      ? guidance.maxAcceptPrice
+      : offerPrice;
+  const polite = `你好，${item}我感兴趣，请问${proposedOffer}元可以出吗？`;
   const firm = suggestion && suggestion.low !== null
-    ? `你好，${item}我看同款挂牌在${suggestion.low}-${suggestion.high}元之间，我出${offerPrice}元，能否成交？`
-    : `你好，${item}我出${offerPrice}元，这是我的诚意价，希望能成交。`;
-  const quick = suggestion && suggestion.median !== null
-    ? `你好，${item}我真心想要，${offerPrice}元可以的话我马上拍，不行的话最多能到${suggestion.median}元。`
-    : `你好，${item}我真心想要，${offerPrice}元可以的话我马上拍。`;
+    ? `你好，${item}我参考了同款${suggestion.low}-${suggestion.high}元的公开挂牌，出${proposedOffer}元可以吗？`
+    : `你好，${item}我出${proposedOffer}元，这是我的诚意价，希望能成交。`;
+  const maxAcceptPrice = guidance?.maxAcceptPrice ?? (budget === null ? null : Math.min(listingPrice, budget));
+  const quick = maxAcceptPrice !== null && maxAcceptPrice > offerPrice
+    ? `你好，${item}我真心想要，${proposedOffer}元可以的话我马上拍。如果成色与描述一致，我最多能到${maxAcceptPrice}元。`
+    : `你好，${item}我真心想要，${proposedOffer}元可以的话我马上拍。`;
   return { polite, firm, quick };
 }
 
-function buyerBargainLevel(cutPercent, research, offerPrice) {
+function buyerBargainLevel(cutPercent, guidance) {
+  if (guidance?.status === "no_need_to_raise") return { label:"无需加价",tone:"mild" };
+  if (guidance?.status === "budget_below_reference") return { label:"预算可能不够",tone:"budget" };
+  if (guidance?.status === "above_reference") return { label:"先别急着出",tone:"high" };
+  if (guidance?.status === "within_reference") return { label:"可以出",tone:"normal" };
+  if (guidance?.status === "below_reference") return { label:"可以再加一点",tone:"hard" };
   if (cutPercent <= 10) return { label:"可以出", tone:"mild" };
   if (cutPercent <= 25) return { label:"可以出", tone:"normal" };
-  if (cutPercent <= 40) {
-    if (research?.suggestion && research.suggestion.low !== null && offerPrice >= research.suggestion.low) {
-      return { label:"可以出", tone:"hard" };
-    }
-    return { label:"可以再加一点", tone:"hard" };
-  }
-  if (research?.suggestion && research.suggestion.low !== null && offerPrice >= research.suggestion.low) {
-    return { label:"可以出", tone:"extreme" };
-  }
+  if (cutPercent <= 40) return { label:"可以再加一点", tone:"hard" };
   return { label:"容易被拒", tone:"extreme" };
 }
 
-function buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, category, condition, usageDetails, cutAmount, cutPercent, level, research }) {
-  const factors = [`卖家挂牌${listingPrice}元，你准备出${offerPrice}元，少了${cutAmount}元`];
+function buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, condition, cutAmount, cutPercent, level, research, guidance }) {
+  const factors = [offerPrice >= listingPrice
+    ? `卖家挂牌${listingPrice}元，你准备出${offerPrice}元，已经达到或超过挂牌价`
+    : `卖家挂牌${listingPrice}元，你准备出${offerPrice}元，少了${cutAmount}元`];
+  if (floorPrice !== null) factors.push(`你的最高预算是${floorPrice}元`);
   if (research?.suggestion) {
-    factors.push(`同款挂牌价区间${research.suggestion.low}-${research.suggestion.high}元，均价${research.suggestion.average}元`);
+    factors.push(`同款公开挂牌参考为${research.suggestion.low}-${research.suggestion.high}元，中位数${research.suggestion.median}元`);
     if (listingPrice > research.suggestion.median) {
-      factors.push(`卖家挂牌价高于同款中位价${research.suggestion.median}元`);
+      factors.push(`卖家挂牌价高于公开样本中位数${research.suggestion.median}元`);
     } else if (listingPrice < research.suggestion.median) {
-      factors.push(`卖家挂牌价低于同款中位价${research.suggestion.median}元`);
+      factors.push(`卖家挂牌价低于公开样本中位数${research.suggestion.median}元`);
     }
   }
   const missing = [];
@@ -417,31 +447,57 @@ function buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, categor
 
   let boundary;
   if (research?.status === "ready" && research.suggestion) {
-    boundary = `已结合${research.confidence}可信度的公开网页信息。你的出价位于同款挂牌价${offerPrice >= research.suggestion.median ? "中位以上" : "中位以下"}。`;
+    boundary = `参考了${research.suggestion.sampleCount}条带原始链接的同款公开挂牌样本。挂牌价不等于真实成交价。`;
   } else if (research?.status === "ready") {
-    boundary = `已查到同款公开挂牌样本，但样本不足，只能判断砍价幅度。`;
+    boundary = "已查到同款公开挂牌样本，但样本不足，只能判断出价与卖家挂牌价的差距。";
   } else {
-    boundary = `目前只能判断出价与挂牌价的差距，同款市场价需要更多样本。`;
+    boundary = "目前只能判断出价与挂牌价的差距，暂时没有足够的同款公开挂牌样本。";
   }
 
   let actionText;
-  if (level.tone === "mild" || level.tone === "normal") {
-    actionText = "出价合理，可以直接发消息询价。";
+  if (guidance.status === "no_need_to_raise") {
+    actionText = `你的出价不低于卖家挂牌价${listingPrice}元，按挂牌价购买即可，无需继续加价。`;
+  } else if (guidance.status === "budget_below_reference") {
+    actionText = `你的预算低于公开挂牌参考下沿${research.suggestion.low}元。可以等待更低挂牌，或重新考虑商品成色和型号。`;
+  } else if (guidance.status === "above_reference") {
+    actionText = `你的出价高于公开挂牌参考上沿${research.suggestion.high}元，先核对型号、成色和配件，不要急着成交。`;
+  } else if (guidance.status === "within_reference") {
+    actionText = guidance.maxAcceptPrice > offerPrice
+      ? `可以先出${offerPrice}元。如果卖家还价，建议不要超过${guidance.maxAcceptPrice}元。`
+      : `可以先出${offerPrice}元，不建议继续提高。`;
+  } else if (guidance.status === "below_reference") {
+    actionText = `当前出价低于公开挂牌参考下沿，可以考虑调整到${guidance.maxAcceptPrice}元，但不要超过你的预算。`;
+  } else if (level.tone === "mild" || level.tone === "normal") {
+    actionText = guidance.maxAcceptPrice !== null && guidance.maxAcceptPrice > offerPrice
+      ? `可以先出${offerPrice}元。如果卖家还价，不要超过${guidance.maxAcceptPrice}元。`
+      : `可以先出${offerPrice}元。如果卖家还价，再结合自己的预算上限决定。`;
   } else if (level.tone === "hard") {
-    actionText = research?.suggestion ? `可以试着出价，也可以考虑提高到${research.suggestion.median}元左右。` : "可以试着出价，注意卖家可能会拒绝或还价。";
+    actionText = guidance.maxAcceptPrice !== null && guidance.maxAcceptPrice > offerPrice
+      ? `可以先试着出价。如果卖家拒绝，最多调整到${guidance.maxAcceptPrice}元。`
+      : "可以先试着出价，同时先确定自己的最高预算。";
   } else {
-    actionText = research?.suggestion && research.suggestion.low !== null
-      ? `出价偏低，建议参考同款挂牌价${research.suggestion.low}-${research.suggestion.high}元调整。`
-      : "出价偏低，容易被拒绝，建议适当提高。";
+    actionText = guidance.maxAcceptPrice !== null && guidance.maxAcceptPrice > offerPrice
+      ? `这刀容易被拒。如果仍想购买，最多调整到${guidance.maxAcceptPrice}元。`
+      : "这刀容易被拒。暂时没有可靠价格上限，建议先补充预算或等待更多公开样本。";
   }
 
   let verdict;
-  if (level.label === "可以出") {
-    verdict = `这刀可以出，${cutPercent}%的砍价幅度${research?.suggestion ? "在同款市场价范围内" : "属于合理范围"}。`;
+  if (level.label === "无需加价") {
+    verdict = `你准备出的价格已经达到或超过卖家挂牌价，无需再加。`;
+  } else if (level.label === "预算可能不够") {
+    verdict = "你的预算低于当前公开挂牌参考，成交机会可能较低。";
+  } else if (level.label === "先别急着出") {
+    verdict = "你的出价高于当前公开挂牌参考，先核对商品信息。";
+  } else if (level.label === "可以出") {
+    verdict = research?.suggestion
+      ? `这刀可以出，你的报价位于同款公开挂牌参考范围内。`
+      : `这刀可以出，但目前只能根据${cutPercent}%的砍价幅度判断。`;
   } else if (level.label === "可以再加一点") {
-    verdict = `可以再加一点，${cutPercent}%的砍价幅度${research?.suggestion ? "略低于同款市场价" : "偏大"}。`;
+    verdict = research?.suggestion
+      ? "当前出价低于同款公开挂牌参考，可以在预算内适当调整。"
+      : `可以再加一点，${cutPercent}%的砍价幅度偏大。`;
   } else {
-    verdict = `容易被拒，${cutPercent}%的砍价幅度${research?.suggestion ? "明显低于同款市场价" : "很大"}。`;
+    verdict = `容易被拒，目前没有足够公开样本，只能确认${cutPercent}%的砍价幅度很大。`;
   }
 
   return {
@@ -450,6 +506,7 @@ function buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, categor
     factors: factors.slice(0, 3),
     missing: missing.slice(0, 3),
     actionText,
+    maxAcceptPrice:guidance.maxAcceptPrice,
   };
 }
 
@@ -984,8 +1041,12 @@ const server = http.createServer(async (req, res) => {
           : (hasImage && !VISION_READY ? "当前图片识别未配置，请手动填写买家报价" : "请上传清晰截图或填写有效的买家报价");
         return send(res, 400, { error:message });
       }
+      if (role === "buyer" && offerPrice <= 0) return send(res, 400, { error:"准备出价必须大于0" });
       if (originalPrice !== null && originalPrice <= 0) return send(res, 400, { error:"商品原价必须大于0" });
       if (floorPrice !== null && floorPrice <= 0) return send(res, 400, { error:role === "buyer" ? "预算必须大于0" : "心理底价必须大于0" });
+      if (role === "buyer" && floorPrice !== null && offerPrice > floorPrice) {
+        return send(res, 400, { error:"准备出价不能超过最高预算" });
+      }
 
       const cutAmount = Math.max(0, Math.round((listingPrice - offerPrice) * 100) / 100);
       const cutPercent = Math.round(Math.max(0, cutAmount / listingPrice * 100) * 10) / 10;
@@ -1001,8 +1062,9 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (role === "buyer") {
-        const level = buyerBargainLevel(cutPercent, research, offerPrice);
-        const reasoning = buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, category, condition, usageDetails, cutAmount, cutPercent, level, research });
+        const guidance = buyerPriceGuidance({ listingPrice, offerPrice, budget:floorPrice, suggestion:research.suggestion });
+        const level = buyerBargainLevel(cutPercent, guidance);
+        const reasoning = buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, condition, cutAmount, cutPercent, level, research, guidance });
 
         return send(res, 200, {
           role:"buyer",
@@ -1011,7 +1073,7 @@ const server = http.createServer(async (req, res) => {
           level:level.label,tone:level.tone,
           ...reasoning,
           research,
-          scripts:buyerScripts({ itemName,listingPrice,offerPrice,suggestion:research.suggestion }),
+          scripts:buyerScripts({ itemName,listingPrice,offerPrice,budget:floorPrice,suggestion:research.suggestion,guidance }),
           screenshotFacts:cleanStringArray(extracted.visibleFacts,[]),
           analysisMode:research.status === "ready" && research.suggestion ? "联网查价判断" : "价格规则判断",
           notice:[visionNotice,textNotice,searchNotice].filter(Boolean).join(" "),
