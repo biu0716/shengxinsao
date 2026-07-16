@@ -174,6 +174,12 @@
     .research-meta { margin:13px 0 0; color:var(--muted); font-size:11px; line-height:1.5; }
     .fact-list { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
     .fact-list li { padding:11px 13px; background:var(--paper-2); border-radius:10px; font-size:14px; line-height:1.5; }
+    .tactic-note { margin:-5px 0 12px; color:var(--muted); font-size:12px; line-height:1.5; }
+    .tactic-list { display:grid; gap:10px; }
+    .tactic-card { padding:15px 16px; border:1.5px solid var(--ink); border-left:7px solid var(--accent); border-radius:12px; }
+    .tactic-card strong { display:block; font-size:15px; }
+    .tactic-card p { margin:7px 0 0; font-size:14px; line-height:1.55; }
+    .tactic-card small { display:block; margin-top:8px; color:var(--muted); font-size:12px; line-height:1.55; }
     .missing-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:13px; }
     .missing-head h3 { margin-bottom:5px; }
     .missing-head p { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
@@ -381,6 +387,9 @@
     .fact-list { gap:0; border:1px solid var(--soft-line); }
     .fact-list li { padding:12px 14px; border-radius:0; background:transparent; }
     .fact-list li + li { border-top:1px solid var(--soft-line); }
+    .tactic-list { gap:0; border:1px solid var(--ink); }
+    .tactic-card { border:0; border-left:7px solid var(--accent); border-radius:0; }
+    .tactic-card + .tactic-card { border-top:1px solid var(--soft-line); }
     .action-box { border:1px solid var(--ink); border-radius:0; }
     .scripts { gap:0; border:1px solid var(--ink); }
     .script { border:0; border-radius:0; padding:14px; }
@@ -549,6 +558,11 @@
                   <p class="helper">不知道怎么选，就保留“正常沟通”。刀刀会据此推荐更合适的回复语气。</p>
                 </div>
                 <div class="field wide">
+                  <label for="counterpartyMessage"><span id="counterpartyMessageLabel">买家原话（可选）</span></label>
+                  <textarea id="counterpartyMessage" name="counterpartyMessage" maxlength="200" placeholder="例如：这衣服你也穿不了，还不如卖给我"></textarea>
+                  <p class="helper">粘贴最影响你的那一句。刀刀会识别其中的谈判策略，不代表对方一定有恶意。</p>
+                </div>
+                <div class="field wide">
                   <label for="usageDetails">使用情况 <span class="required">必填</span></label>
                   <input id="usageDetails" name="usageDetails" maxlength="120" required placeholder="例如：穿过3次，已清洗，无破损和明显磨损">
                   <p class="helper">请写真实使用次数、时长、清洁情况和瑕疵。</p>
@@ -654,6 +668,11 @@
               </div>
               <ul class="fact-list" id="missing"></ul>
             </section>
+            <section class="section" id="tacticsSection">
+              <h3>对方在用什么招</h3>
+              <p class="tactic-note">这是对沟通策略的识别，不代表对方一定有恶意。</p>
+              <div class="tactic-list" id="tacticCards"></div>
+            </section>
             <section class="section">
               <h3>处理建议</h3>
               <div class="action-box" id="actionText"></div>
@@ -712,6 +731,8 @@
     const negotiationRequired = document.getElementById("negotiationRequired");
     const counterpartyToneInput = document.getElementById("counterpartyTone");
     const counterpartyToneLabel = document.getElementById("counterpartyToneLabel");
+    const counterpartyMessageInput = document.getElementById("counterpartyMessage");
+    const counterpartyMessageLabel = document.getElementById("counterpartyMessageLabel");
     const decisionTitle = document.getElementById("decisionTitle");
     const decisionSub = document.getElementById("decisionSub");
     const urgencyLabel = document.getElementById("urgencyLabel");
@@ -789,6 +810,8 @@
         negotiationPreferenceLabel.textContent = "是否接受议价";
         negotiationRequired.style.display = "inline";
         counterpartyToneLabel.textContent = "买家说话方式";
+        counterpartyMessageLabel.textContent = "买家原话（可选）";
+        counterpartyMessageInput.placeholder = "例如：这衣服你也穿不了，还不如卖给我";
         decisionTitle.textContent = "再确认 4 件事";
         decisionSub.textContent = "成色、使用情况、你的底线和买家态度会影响判断与回复语气。";
         urgencyLabel.textContent = "出手速度";
@@ -816,6 +839,8 @@
         negotiationPreferenceLabel.textContent = "卖家是否接受议价";
         negotiationRequired.style.display = "none";
         counterpartyToneLabel.textContent = "卖家说话方式";
+        counterpartyMessageLabel.textContent = "卖家原话（可选）";
+        counterpartyMessageInput.placeholder = "例如：今天不拍就不留了";
         decisionTitle.textContent = "再确认商品和卖家态度";
         decisionSub.textContent = "成色、使用情况、卖家议价态度和说话方式会影响出价建议与回复语气。";
         urgencyLabel.textContent = "购买急迫度";
@@ -1035,6 +1060,7 @@
         document.getElementById("condition").value = "轻度使用";
         document.getElementById("negotiationPreference").value = "可以小刀";
         counterpartyToneInput.value = "一上来就大砍价";
+        counterpartyMessageInput.value = "这个价格挂着也没人要，60元我现在就拍。";
         document.getElementById("usageDetails").value = "穿过3次，已清洗，无破损和明显磨损";
         document.getElementById("note").value = "";
       } else {
@@ -1048,6 +1074,7 @@
         document.getElementById("condition").value = "轻度使用";
         document.getElementById("negotiationPreference").value = "卖家还没表态";
         counterpartyToneInput.value = "正常沟通";
+        counterpartyMessageInput.value = "这个价格今天不拍就不留了。";
         document.getElementById("usageDetails").value = "卖家说穿过3次，已清洗，无破损";
         document.getElementById("note").value = "";
       }
@@ -1133,6 +1160,25 @@
       document.getElementById("researchMeta").textContent = [searchedAt ? `查询时间 ${searchedAt}` : "",research.cached ? "使用近期缓存" : "",limitation,"公开挂牌价不等于真实成交价"].filter(Boolean).join("。") + "。";
     }
 
+    function renderTactics(tactics) {
+      const section = document.getElementById("tacticsSection");
+      const cards = document.getElementById("tacticCards");
+      cards.replaceChildren();
+      (tactics || []).forEach((tactic) => {
+        const card = document.createElement("article");
+        card.className = "tactic-card";
+        const title = document.createElement("strong");
+        title.textContent = tactic.label;
+        const summary = document.createElement("p");
+        summary.textContent = tactic.summary;
+        const advice = document.createElement("small");
+        advice.textContent = `你要抓住：${tactic.advice}`;
+        card.append(title, summary, advice);
+        cards.appendChild(card);
+      });
+      section.style.display = cards.children.length ? "block" : "none";
+    }
+
     function updateScriptPresentation(role, recommendedScript) {
       const scriptsContainer = document.querySelector(".scripts");
       const scriptCards = scriptsContainer.querySelectorAll(".script");
@@ -1180,6 +1226,7 @@
       setList("missing", data.missing);
       latestMissing = data.missing || [];
       document.getElementById("missingSection").style.display = data.missing && data.missing.length ? "block" : "none";
+      renderTactics(data.tactics);
       document.getElementById("actionText").textContent = data.actionText;
       latestScripts = data.scripts || {};
       document.getElementById("scriptPolite").textContent = latestScripts.polite || "";

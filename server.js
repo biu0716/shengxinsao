@@ -342,15 +342,102 @@ function median(values) {
   return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) * 50) / 100;
 }
 
-function recommendedScriptForTone(counterpartyTone, role, urgency) {
+function detectNegotiationTactics({ role, counterpartyMessage, description, chatSummary, screenshotFacts, counterpartyTone, cutPercent }) {
+  const directMessage = shortText(counterpartyMessage, 200);
+  const contextualDescription = /(?:对方|买家|卖家|他|她)(?:说|表示|觉得|认为|问)/.test(description)
+    ? shortText(description, 500)
+    : "";
+  const text = [
+    directMessage,
+    shortText(chatSummary, 160),
+    ...cleanStringArray(screenshotFacts, []).slice(0, 5),
+    contextualDescription,
+  ].filter(Boolean).join(" ");
+  const tactics = [];
+  const add = (id, label, summary, advice) => {
+    if (!tactics.some((tactic) => tactic.id === id)) tactics.push({ id, label, summary, advice });
+  };
+
+  if (/(?:你|反正你).{0,8}(?:穿不了|穿不下|用不了|用不上|戴不了|背不了|留着也没用)|不适合你|还不如(?:卖|给)/.test(text)) {
+    add(
+      "personal_pressure",
+      "利用你的处境压价",
+      "把“你现在用不上”说成“商品就不值这个价”，让你产生尽快卖掉的压力。",
+      "是否适合你，只影响你想不想卖，不直接决定商品的二手价值。"
+    );
+  }
+  if (/(?:没人要|卖不掉|不值钱|不值这个价|过时了|款式老|颜色难看|也就值|顶多值)/.test(text)) {
+    add(
+      "devalue",
+      "先贬低商品再压价",
+      "先降低你对商品价值的判断，再让低报价显得合理。",
+      "把情绪评价和价格证据分开，仍按成色、同款和自己的底线判断。"
+    );
+  }
+  if (/(?:闲鱼|平台|别人|别家|市场价).{0,14}(?:都|才|只要|只卖|就卖|更便宜)/.test(text)) {
+    add(
+      "unverified_market",
+      "用未经核验的行情压价",
+      "用一句“别人卖得更低”设置价格锚点，却没有说明是不是同款、同成色。",
+      "请对方给出同款链接，再核对型号、成色、配件和发布时间。"
+    );
+  }
+  if (/(?:现在就拍|马上拍|立刻拍|秒拍|今天就要|今天不拍|不拍就不留|过了今天|现在转|现在成交|立刻成交)/.test(text)) {
+    add(
+      "instant_deal",
+      "制造立刻成交感",
+      "用“马上成交”或“错过就没有”的压力，让你更快接受当前价格。",
+      "成交速度确实有价值，但不必因此突破自己的底线或预算。"
+    );
+  }
+  if (/(?:学生党|没钱|预算有限|手头紧|给孩子买|第一次买|照顾一下)/.test(text)) {
+    add(
+      "personal_story",
+      "用个人情况争取让价",
+      "把个人预算或处境带入价格谈判，希望你因为同情降低价格。",
+      "可以理解对方处境，但价格仍由商品情况和你的底线决定。"
+    );
+  }
+  if (/(?:磨损|瑕疵|起球|划痕|掉色|旧).{0,16}(?:所以|只能|最多|顶多|不值)/.test(text)) {
+    add(
+      "flaw_pressure",
+      "放大瑕疵压价",
+      "把某个瑕疵放大成大幅降价的理由。",
+      "先确认瑕疵是否真实、是否已经体现在挂牌价里，再决定让多少。"
+    );
+  }
+  if (/反复压价/.test(counterpartyTone)) {
+    add(
+      "repeat_pressure",
+      "反复磨价",
+      "通过多次重复低价，让你因为沟通疲劳而松动。",
+      "一次说清最低价，之后不再围绕同一个低报价来回谈。"
+    );
+  }
+  if (role === "seller" && cutPercent >= 40) {
+    add(
+      "low_anchor",
+      "低价锚定",
+      "先报一个明显偏低的价格，把后面的谈判拉到低价附近。",
+      "不要围绕对方的起始价一点点加，直接回到自己的底线或合理区间。"
+    );
+  }
+
+  return tactics.slice(0, 3);
+}
+
+function recommendedScriptForTone(counterpartyTone, role, urgency, tactics = []) {
   if (/礼貌|好沟通/.test(counterpartyTone)) return "polite";
   if (/大砍价|反复压价|不客气|强硬|回复冷淡|不议价|催着成交/.test(counterpartyTone)) return "quick";
+  if (tactics.some((tactic) => ["personal_pressure","devalue","unverified_market","low_anchor"].includes(tactic.id))) return "firm";
   if (role === "seller" && urgency === "尽快") return "firm";
   return "firm";
 }
 
-function sellerScripts({ listingPrice, offerPrice, floorPrice, urgency, negotiationPreference, counterpartyTone }) {
+function sellerScripts({ listingPrice, offerPrice, floorPrice, urgency, negotiationPreference, counterpartyTone, tactics = [] }) {
   const toughReply = /大砍价|反复压价|不客气|强硬/.test(counterpartyTone);
+  const tacticIds = new Set(tactics.map((tactic) => tactic.id));
+  const replyPrice = floorPrice ?? listingPrice;
   if (offerPrice >= listingPrice) {
     return {
       polite: `可以的，${offerPrice}元没问题，你直接拍就行。`,
@@ -363,6 +450,20 @@ function sellerScripts({ listingPrice, offerPrice, floorPrice, urgency, negotiat
       polite: `谢谢喜欢～这件已经是最低价了，${listingPrice}元不议哦。`,
       firm: `${listingPrice}元不议价，${offerPrice}元不出。`,
       quick: `${offerPrice}元不出，标价${listingPrice}元。价格合适再聊。`,
+    };
+  }
+  if (tacticIds.has("personal_pressure")) {
+    return {
+      polite: `确实是因为不太适合我才出，不过价格还是按成色和同款定的。${replyPrice}元可以，${offerPrice}元不出。`,
+      firm: `我用不用得上，和这件值多少钱是两回事。最低${replyPrice}元。`,
+      quick: `不用替我判断，${offerPrice}元不出。价格合适再聊。`,
+    };
+  }
+  if (tacticIds.has("devalue")) {
+    return {
+      polite: `你觉得不值可以理解，不过我还是按成色和同款价格出，最低${replyPrice}元。`,
+      firm: `商品值多少看成色和同款，不按一句“没人要”定价。最低${replyPrice}元。`,
+      quick: `这个说法不影响我的价格，${offerPrice}元不出。`,
     };
   }
   if (floorPrice !== null) {
@@ -1051,6 +1152,7 @@ const server = http.createServer(async (req, res) => {
       const usageDetails = shortText(body.usageDetails, 120);
       const negotiationPreference = shortText(body.negotiationPreference, 30);
       const counterpartyTone = shortText(body.counterpartyTone, 30) || "正常沟通";
+      const counterpartyMessage = shortText(body.counterpartyMessage, 200);
       const urgency = shortText(body.urgency, 10);
       const note = shortText(body.note, 300);
       const comparablePrices = priceList(body.comparablePrices);
@@ -1074,6 +1176,17 @@ const server = http.createServer(async (req, res) => {
 
       const cutAmount = Math.max(0, Math.round((listingPrice - offerPrice) * 100) / 100);
       const cutPercent = Math.round(Math.max(0, cutAmount / listingPrice * 100) * 10) / 10;
+      const screenshotFacts = cleanStringArray(extracted.visibleFacts, []);
+      const chatSummary = shortText(extracted.chatSummary, 160);
+      const tactics = detectNegotiationTactics({
+        role,
+        counterpartyMessage,
+        description,
+        chatSummary,
+        screenshotFacts,
+        counterpartyTone,
+        cutPercent,
+      });
 
       let research;
       let searchNotice = "";
@@ -1089,18 +1202,19 @@ const server = http.createServer(async (req, res) => {
         const guidance = buyerPriceGuidance({ listingPrice, offerPrice, budget:floorPrice, suggestion:research.suggestion });
         const level = buyerBargainLevel(cutPercent, guidance);
         const reasoning = buyerAnalysis({ itemName, listingPrice, offerPrice, floorPrice, condition, cutAmount, cutPercent, level, research, guidance });
-        const recommendedScript = recommendedScriptForTone(counterpartyTone, "buyer", urgency);
+        const recommendedScript = recommendedScriptForTone(counterpartyTone, "buyer", urgency, tactics);
 
         return send(res, 200, {
           role:"buyer",
           itemName:itemName || "这款商品",
-          listingPrice,offerPrice,originalPrice,floorPrice,counterpartyTone,cutAmount,cutPercent,
+          listingPrice,offerPrice,originalPrice,floorPrice,counterpartyTone,counterpartyMessage,cutAmount,cutPercent,
           level:level.label,tone:level.tone,
           ...reasoning,
           research,
           scripts:buyerScripts({ listingPrice,offerPrice,suggestion:research.suggestion,guidance,counterpartyTone }),
           recommendedScript,
-          screenshotFacts:cleanStringArray(extracted.visibleFacts,[]),
+          tactics,
+          screenshotFacts,
           analysisMode:research.status === "ready" && research.suggestion ? "联网查价判断" : "价格规则判断",
           notice:[visionNotice,textNotice,searchNotice].filter(Boolean).join(" "),
           disclaimer:"结果只用于议价参考，不代表平台真实成交价。",
@@ -1116,9 +1230,9 @@ const server = http.createServer(async (req, res) => {
         median:median(comparablePrices),
       } : null;
       const researchEvidence = { ...research,sources:research.sources.map((source) => source.title) };
-      const evidence = { itemName,listingPrice,offerPrice,originalPrice,floorPrice,category,condition,usageDetails,negotiationPreference,counterpartyTone,urgency,
+      const evidence = { itemName,listingPrice,offerPrice,originalPrice,floorPrice,category,condition,usageDetails,negotiationPreference,counterpartyTone,counterpartyMessage,urgency,
         description,note,comparablePrices,cutAmount,cutPercent,level:level.label,research:researchEvidence,
-        screenshotFacts:cleanStringArray(extracted.visibleFacts,[]),chatSummary:shortText(extracted.chatSummary,120) };
+        tactics,screenshotFacts,chatSummary };
       const fallback = fallbackBargain({ ...evidence,level,research });
       let reasoning = fallback;
       let aiUsed = false;
@@ -1144,13 +1258,14 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, {
         role:"seller",
         itemName:itemName || "这件商品",
-        listingPrice,offerPrice,originalPrice,floorPrice,counterpartyTone,cutAmount,cutPercent,
+        listingPrice,offerPrice,originalPrice,floorPrice,counterpartyTone,counterpartyMessage,cutAmount,cutPercent,
         listingToOriginalPercent:originalPrice ? Math.round(listingPrice / originalPrice * 1000) / 10 : null,
         level:level.label,tone:level.tone,comparison,
         ...reasoning,
         research,
-        scripts:sellerScripts({ listingPrice,offerPrice,floorPrice,urgency,negotiationPreference,counterpartyTone }),
-        recommendedScript:recommendedScriptForTone(counterpartyTone, "seller", urgency),
+        scripts:sellerScripts({ listingPrice,offerPrice,floorPrice,urgency,negotiationPreference,counterpartyTone,tactics }),
+        recommendedScript:recommendedScriptForTone(counterpartyTone, "seller", urgency, tactics),
+        tactics,
         screenshotFacts:evidence.screenshotFacts,
         analysisMode:research.status === "ready" ? "联网查价判断" : aiUsed ? "AI辅助判断" : "价格规则判断",
         notice:[visionNotice,textNotice,searchNotice,aiNotice].filter(Boolean).join(" "),
